@@ -1,0 +1,4 @@
+regex==2022.9.13
+gensim==4.2.0
+Cython==0.29.32
+requests~=2.22.0
