@@ -131,3 +131,4 @@ dmypy.json
 .idea/
 data/
 egs/test_data/Makefile.options
+/egs/crf/Makefile.options
