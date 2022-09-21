@@ -22,8 +22,13 @@ ${out_dir}/test_f.txt: ${out_dir}/test.txt
 	$(python_cmd) local/fix_train.py --input $^ > $@_
 	mv $@_ $@
 ############################################
-train: ${out_dir}/train_f.txt ${out_dir}/test_f.txt
-	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --test ${out_dir}/test_f.txt
+train: ${out_dir}/model.crf
+${out_dir}/model.crf: ${out_dir}/train_f.txt
+	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out ${out_dir}/model.crf
+test/train: ${out_dir}/model.crf ${out_dir}/train_f.txt
+	$(python_cmd) local/test.py --input ${out_dir}/train_f.txt --model ${out_dir}/model.crf
+test/test: ${out_dir}/model.crf ${out_dir}/test_f.txt
+	$(python_cmd) local/test.py --input ${out_dir}/test_f.txt --model ${out_dir}/model.crf
 ############################################
 build: ${out_dir}/test.txt ${out_dir}/train.txt
 .PHONY: build
