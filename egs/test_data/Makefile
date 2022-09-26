@@ -55,8 +55,11 @@ start/morph:
 	docker run -it \
 		-p 8002:8090 semantikadocker.vdu.lt/v2/morph:0.2
 .PHONY: start/morph
+${out_dir}/unneeded_params.txt: ${out_dir}/train_lemma.txt
+	$(python_cmd) local/find_unneeded.py --input $^
 ############################################
-build: ${out_dir}/test_lemma.txt ${out_dir}/train_lemma.txt ${out_dir}/test_morph.txt
+build: ${out_dir}/test_lemma.txt ${out_dir}/train_lemma.txt ${out_dir}/test_morph.txt \
+	${out_dir}/unneeded_params.txt
 .PHONY: build
 ############################################
 clean:

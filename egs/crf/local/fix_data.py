@@ -9,6 +9,33 @@ def lemmas(l, w):
     return l.get(w)
 
 
+def fix_label(param):
+    s = list(param)
+    if s[0] == 'N':
+        s[3] = "-"
+
+        s[5] = "-"
+        s[6] = "-"
+    elif s[0] == 'A':
+        s[4] = "-"
+
+        s[1] = "-"
+        s[2] = "-"
+        s[6] = "-"
+    elif s[0] == 'V':
+        s[5] = "-"
+
+        s[9] = "-"
+        s[13] = "-"
+    elif s[0] == 'P':
+        s[1] = "-"
+        s[5] = "-"
+    elif s[0] == 'M':
+        s[5] = "-"
+        s[6] = "-"
+    return "".join(s)
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description="Outputs all possible lemma variants for each word",
                                      epilog="E.g. " + sys.argv[0] + "",
@@ -31,6 +58,7 @@ def main(argv):
                         line = line.replace("#", "_")
                         wrds = line.split("\t")
                         wrds[9] = wrds[9].partition("Multext=")[2]
+                        wrds[9] = fix_label(wrds[9])
                         line = "\t".join(wrds)
                     print(line)
             print()
