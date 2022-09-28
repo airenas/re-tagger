@@ -16,7 +16,38 @@ def diff(labelsN, pos):
     return 0
 
 
+def diffs(labelsN, priorities):
+    res = [0] * (len(labelsN[0]))
+    l_tmp = labelsN
+    for pos in priorities:
+        tmp = dict()
+        for _, l in enumerate(l_tmp):
+            p = l[pos]
+            a = tmp.get(p, [])
+            a.append(l)
+            tmp[p] = a
+        l_tmp = []
+        w = False
+        for k, v in tmp.items():
+            if len(v) > 1:
+                for vv in v:
+                    l_tmp.append(vv)
+            if w:
+                res[pos] = 1
+            w = True
+        if len(l_tmp) < 2:
+            return res
+    return res
+
+
 def analyze(data, labels, word):
+    priorities = {
+        'N': [4, 3, 2, 1, 5, 6],
+        'A': [5, 4, 3, 2, 1, 6],
+        'M': [5, 4, 3, 2, 1],
+        'P': [4, 3, 2, 1],
+        'V': [10, 5, 6, 3, 4, 7, 8, 9, 11, 12, 13, 2, 1]
+    }
     for pos in ["N", "V", "A", "P", "M"]:
         labelsN = list(filter(lambda l: (l.startswith(pos)), labels))
         if len(labelsN) > 1:
@@ -24,11 +55,19 @@ def analyze(data, labels, word):
             if not pos in data:
                 data[pos] = [0] * (len(l))
             n = data[pos]
-            for i in range(len(n)):
-                c = diff(labelsN, i)
-                if n[i] == 0 and c > 0:
-                    logger.info("{}{}: {} {}".format(pos, i, word, labels))
-                n[i] += c
+            if pos in priorities:
+                ds = diffs(labelsN, priorities[pos])
+                for i in range(len(n)):
+                    if n[i] == 0 and ds[i] > 0:
+                        logger.info("{}{}: {} {}".format(pos, i, word, labels))
+                    n[i] += ds[i]
+                pass
+            else:
+                for i in range(len(n)):
+                    c = diff(labelsN, i)
+                    if n[i] == 0 and c > 0:
+                        logger.info("{}{}: {} {}".format(pos, i, word, labels))
+                    n[i] += c
 
 
 def main(argv):

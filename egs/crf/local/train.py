@@ -5,9 +5,6 @@ import sys
 
 import pandas as pd
 import sklearn_crfsuite
-from sklearn import metrics
-from sklearn_crfsuite import metrics as crfmetrics
-from sklearn_crfsuite.utils import flatten
 
 from egs.crf.local.features import format_data, sent2features, sent2labels
 from src.utils.logger import logger
@@ -31,6 +28,7 @@ def main(argv):
     train_sents = format_data(data['train'])
     x_train = [sent2features(s) for s in train_sents]
     y_train = [sent2labels(s) for s in train_sents]
+    print(x_train[0][0:2], sep='\n\n')
 
     logger.info("training crf")
     crf = sklearn_crfsuite.CRF(

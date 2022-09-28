@@ -47,12 +47,12 @@ def main(argv):
                                                                       labels=labels, zero_division=0)))
     print('Accuracy on the {} = {}\n'.format(args.input, crfmetrics.flat_accuracy_score(y_test, y_pred)))
 
-    sorted_labels = sorted(labels, key=lambda name: (name[1:], name[0]))
-    y_train_flat = flatten(y_test)
-    y_pred_flat = flatten(y_pred)
-    print('Data set classification report: \n\n{}'
-          .format(metrics.classification_report(y_train_flat, y_pred_flat, labels=sorted_labels, digits=3,
-                                                zero_division=0)))
+    # sorted_labels = sorted(labels, key=lambda name: (name[1:], name[0]))
+    # y_train_flat = flatten(y_test)
+    # y_pred_flat = flatten(y_pred)
+    # print('Data set classification report: \n\n{}'
+    #       .format(metrics.classification_report(y_train_flat, y_pred_flat, labels=sorted_labels, digits=3,
+    #                                             zero_division=0)))
     logger.info("Done")
 
 
