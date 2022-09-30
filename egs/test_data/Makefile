@@ -45,6 +45,8 @@ count/possibilities: ${out_dir}/test_lemma.txt
 	$(python_cmd) local/count_posibilities.py --input $^
 count/morph: ${out_dir}/test_morph.txt
 	$(python_cmd) local/count_morph.py --show --input $^
+count/morph-vs-matas: ${out_dir}/test_morph.txt ${out_dir}/test_plain.txt
+	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_morph.txt > ${out_dir}/morf.cmp
 ############################################
 start/lema:
 	docker run -it -e SECRET=$(LEMA_SECRET) -e LEMA_TYPE=hunspell \
@@ -58,9 +60,18 @@ start/morph:
 ${out_dir}/unneeded_params.txt: ${out_dir}/train_lemma.txt
 	$(python_cmd) local/find_unneeded.py --input $^
 ############################################
-build: ${out_dir}/test_lemma.txt ${out_dir}/train_lemma.txt ${out_dir}/test_morph.txt \
-	${out_dir}/unneeded_params.txt
+${out_dir}/test_lemma_tags.txt: ${out_dir}/test_lemma.txt
+	$(python_cmd) local/to_tags.py --input $^ > $@_
+	mv $@_ $@
+############################################
+${out_dir}/test_plain.txt: ${out_dir}/test.txt
+	$(python_cmd) local/to_plain.py --input $^ > $@_
+	mv $@_ $@	
+############################################
+build: ${out_dir}/test_lemma_tags.txt ${out_dir}/train_lemma.txt ${out_dir}/test_morph.txt \
+	${out_dir}/test_plain.txt
 .PHONY: build
+unneeded: ${out_dir}/unneeded_params.txt 
 ############################################
 clean:
 	rm -rf $(out_dir)

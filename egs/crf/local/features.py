@@ -31,8 +31,8 @@ def word2features(sent, i):
 
     if i > 1:
         features.update(get_word_feat(sent[i - 2][0], '-2:'))
-    if i > 2:
-        features.update(get_word_feat(sent[i - 3][0], '-3:'))
+    # if i > 2:
+    #     features.update(get_word_feat(sent[i - 3][0], '-3:'))
 
     if i < len(sent) - 1:
         features.update(get_word_feat(sent[i + 1][0], '+1:'))
@@ -41,8 +41,8 @@ def word2features(sent, i):
 
     if i < len(sent) - 2:
         features.update(get_word_feat(sent[i + 2][0], '+2:'))
-    if i < len(sent) - 3:
-        features.update(get_word_feat(sent[i + 3][0], '+3:'))
+    # if i < len(sent) - 3:
+    #     features.update(get_word_feat(sent[i + 3][0], '+3:'))
 
     return features
 
