@@ -63,6 +63,7 @@ def sent2tokens(sent):
 def format_data(csv_data):
     sents = []
     pos_id = 9
+    w_prev = 0
     for i in range(len(csv_data)):
         w_num = csv_data.iloc[i, 0]
         if math.isnan(w_num):
