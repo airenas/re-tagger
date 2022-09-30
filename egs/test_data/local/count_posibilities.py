@@ -5,10 +5,10 @@ from src.utils.logger import logger
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description="Converts csv to sentences",
+    parser = argparse.ArgumentParser(description="Count distribution of lemma count possibilities for each word",
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--input", nargs='?', required=True, help="Initial words file")
+    parser.add_argument("--input", nargs='?', required=True, help="Initial words file with lemmas")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")

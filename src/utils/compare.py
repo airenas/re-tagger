@@ -5,27 +5,6 @@ from src.utils.logger import logger
 from sklearn.metrics import accuracy_score, f1_score
 
 
-class FileReader:
-    """An iterator that yields lines."""
-
-    def __init__(self, path):
-        self.path = path
-        self.read = 0
-
-    def __iter__(self):
-        for line in self.fd:
-            line = line.strip()
-            yield line
-
-    def __enter__(self):
-        self.fd = open(self.path, 'r')
-        print("Opened %s" % self.path, file=sys.stderr)
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.fd.close()
-
-
 def main(argv):
     parser = argparse.ArgumentParser(description="Compares two files",
                                      epilog="E.g. " + sys.argv[0] + "",
@@ -39,15 +18,19 @@ def main(argv):
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
-    wc, bc = 0, 0
+    logger.info("File 1: {}".format(args.f1))
+    logger.info("File 2: {}".format(args.f2))
+    wc, errc, mwc, errmvc = 0, 0, 0, 0
     p1, p2 = int(args.p1), int(args.p2)
     y_pred, y_true = [], []
-    with FileReader(args.f1) as f1:
-        with FileReader(args.f2) as f2:
+    with open(args.f1, 'r') as f1:
+        with open(args.f2, 'r') as f2:
             f2i = iter(f2)
             for l1 in f1:
                 wc += 1
                 l2 = next(f2i)
+                l1 = l1.strip()
+                l2 = l2.strip()
                 w1 = l1.split("\t")
                 w2 = l2.split("\t")
                 if len(w1) < p1:
@@ -58,12 +41,17 @@ def main(argv):
                     raise Exception("problem at {}, {} != {}".format(wc, w1[0], w2[0]))
                 y_true.append(w1[p1])
                 y_pred.append(w2[p2])
+                if " " in w1[0]:
+                    mwc += 1
                 if w1[p1] != w2[p2]:
                     print("{}\t{}\t{}\t{}".format(w1[0], w1[p1], w2[p2], args.diff_sym))
-                    bc += 1
+                    errc += 1
+                    if " " in w1[0]:
+                        errmvc += 1
                 else:
                     print("{}\t{}".format(w1[0], w1[args.p1]))
-    logger.info("Results: all: {}, err: {}, {}".format(wc, bc, bc / wc))
+    logger.info("Results: all: {}, err: {}, {}".format(wc, errc, errc / wc))
+    logger.info("Results: multiple: {}, err: {}, {}".format(mwc, errmvc, errmvc / mwc))
     logger.info("Acc: {}".format(accuracy_score(y_true, y_pred)))
     labels = set()
     for la in y_true:

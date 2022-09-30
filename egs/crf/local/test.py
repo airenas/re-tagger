@@ -18,6 +18,7 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
     parser.add_argument("--model", nargs='?', required=True, help="Model file")
+    parser.add_argument("--out", nargs='?', required=False, help="Writes out predictions to tab separated file")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -41,7 +42,14 @@ def main(argv):
 
     logger.info("predict {}".format(args.input))
     y_pred = crf.predict(x_test)
-    logger.info("done")
+    logger.info("prediction done")
+    if args.out:
+        with open(args.out, 'w') as f:
+            for i, x in enumerate(x_test):
+                y = y_pred[i]
+                for j, xw in enumerate(x):
+                    print("{}\t{}".format(xw.get("word"), y[j]), file=f)
+
     print('F1 score on the {} = {}\n'.format(args.input,
                                              crfmetrics.flat_f1_score(y_test, y_pred, average='weighted',
                                                                       labels=labels, zero_division=0)))
