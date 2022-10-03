@@ -13,16 +13,12 @@ def fix_label(param):
     s = list(param)
     if s[0] == 'N':
         s[1] = "-"
-        # s[3] = "-"
-
         s[5] = "-"
         s[6] = "-"
         if s[2] == 'c':
             s[2] = 'f'
         if s[3] == 'd':
             s[3] = 'p'
-        # if s[1] == 's' or s[1] == 'x':
-        #     s[1] = 'c'
     elif s[0] == 'A':
         s[1] = "-"
         s[2] = "-"

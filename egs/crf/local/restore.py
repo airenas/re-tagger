@@ -4,13 +4,29 @@ import sys
 from src.utils.logger import logger
 
 
+def half_change(pos, predited, t, i):
+    if pos == 'N':
+        if (i == 2 and predited == 'f' and t == 'c') or (i == 3 and predited == 'p' and t == 'd'):
+            return True
+    if pos == 'A':
+        if (i == 3 and predited == 'f' and t == 'n') or (i == 4 and predited == 'p' and t == 'd'):
+            return True
+    if pos == 'P':
+        if i == 3 and predited == 'p' and t == 'd':
+            return True
+
+    return False
+
+
 def calc(p, t):
     if p[0] != t[0]:
         return 50
     res = 0.0
     for i, v in enumerate(p):
         if v != t[i]:
-            if v != '-':
+            if half_change(p[0], v, t[i], i):
+                res += .02
+            elif v != '-':
                 res += 1
             else:
                 res += .01
