@@ -24,19 +24,25 @@ ${out_dir}/train_f.txt: ${out_dir}/train.txt
 ${out_dir}/test_f.txt: ${out_dir}/test.txt
 	$(python_cmd) local/fix_data.py --input $^ > $@_
 	mv $@_ $@
+${out_dir}/train_fl.txt: ${out_dir}/train_f.txt ${out_dir}/train_lemma.txt
+	$(python_cmd) local/join_lemma.py --input ${out_dir}/train_f.txt --lemmas ${out_dir}/train_lemma.txt > $@_
+	mv $@_ $@
+${out_dir}/test_fl.txt: ${out_dir}/test_f.txt ${out_dir}/test_lemma.txt
+	$(python_cmd) local/join_lemma.py --input ${out_dir}/test_f.txt --lemmas ${out_dir}/test_lemma.txt > $@_
+	mv $@_ $@
 ############################################
 train: ${out_dir}/model.crf
-${out_dir}/model.crf: ${out_dir}/train_f.txt
-	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out ${out_dir}/model.crf --f_before $(f_before) \
+${out_dir}/model.crf: ${out_dir}/train_fl.txt
+	$(python_cmd) local/train.py --input ${out_dir}/train_fl.txt --out ${out_dir}/model.crf --f_before $(f_before) \
 	--f_after $(f_after) --f_func $(f_func)
-test/train: ${out_dir}/model.crf ${out_dir}/train_f.txt
-	$(python_cmd) local/test.py --input ${out_dir}/train_f.txt --model ${out_dir}/model.crf \
+test/train: ${out_dir}/model.crf ${out_dir}/train_fl.txt
+	$(python_cmd) local/test.py --input ${out_dir}/train_fl.txt --model ${out_dir}/model.crf \
 	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
 test/test: ${out_dir}/test_pred.txt
-${out_dir}/test_pred.txt: ${out_dir}/model.crf ${out_dir}/test_f.txt
-	$(python_cmd) local/test.py --input ${out_dir}/test_f.txt --model ${out_dir}/model.crf --out $@ \
+${out_dir}/test_pred.txt: ${out_dir}/model.crf ${out_dir}/test_fl.txt
+	$(python_cmd) local/test.py --input ${out_dir}/test_fl.txt --model ${out_dir}/model.crf --out $@ \
 	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
-show/labels: ${out_dir}/train_f.txt
+show/labels: ${out_dir}/train_fl.txt
 	$(python_cmd) local/show_labels.py --input $^
 ${out_dir}/test_pred_restore.txt: ${out_dir}/test_pred.txt ${out_dir}/test_lemma_tags.txt
 	$(python_cmd) local/restore.py --lemmas ${out_dir}/test_lemma_tags.txt --pred ${out_dir}/test_pred.txt > $@_
