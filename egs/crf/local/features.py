@@ -2,7 +2,7 @@ import math
 import string
 
 
-def get_word_feat(word, prefix):
+def get_word_feat_v0(word, prefix):
     wl = word.lower()
     res = {
         prefix + 'word': word,
@@ -20,35 +20,58 @@ def get_word_feat(word, prefix):
     return res
 
 
-def word2features(sent, i):
+def get_word_feat(word, prefix):
+    wl = word.lower()
+    if word in string.punctuation:
+        res = {
+            prefix + 'word': word,
+            prefix + 'word.lower()': wl,
+            prefix + 'len(word)': len(word),
+            prefix + 'word.ispunctuation': True,
+        }
+    else:
+        res = {
+            prefix + 'word': word,
+            prefix + 'len(word)': len(word),
+            prefix + 'word[-3:]': str(wl[-3:]),
+            prefix + 'word[-2:]': str(wl[-2:]),
+            prefix + 'word.lower()': wl,
+            prefix + 'word.ispunctuation': False,
+            prefix + 'word.isdigit()': word.isdigit(),
+        }
+    return res
+
+
+def word2features(sent, i, words_before, words_after, extract_func):
     word = sent[i][0]
     features = dict()
-    features.update(get_word_feat(word, ''))
+    features.update(extract_func(word, ''))
     if i > 0:
-        features.update(get_word_feat(sent[i - 1][0], '-1:'))
+        if words_before > 0:
+            features.update(extract_func(sent[i - 1][0], '-1:'))
     else:
         features['BOS'] = True
 
-    if i > 1:
-        features.update(get_word_feat(sent[i - 2][0], '-2:'))
-    # if i > 2:
-    #     features.update(get_word_feat(sent[i - 3][0], '-3:'))
+    for ib in range(2, - words_before - 1, -1):
+        if (i - ib) >= 0:
+            features.update(extract_func(sent[i - ib][0], '-{}:'.format(ib)))
 
     if i < len(sent) - 1:
-        features.update(get_word_feat(sent[i + 1][0], '+1:'))
+        if words_after > 0:
+            features.update(extract_func(sent[i + 1][0], '+1:'))
     else:
         features['EOS'] = True
 
-    if i < len(sent) - 2:
-        features.update(get_word_feat(sent[i + 2][0], '+2:'))
-    # if i < len(sent) - 3:
-    #     features.update(get_word_feat(sent[i + 3][0], '+3:'))
+    for ia in range(2, words_after + 1):
+        if (i + ia) < len(sent):
+            features.update(extract_func(sent[i + ia][0], '+{}:'.format(ia)))
 
     return features
 
 
-def sent2features(sent):
-    return [word2features(sent, i) for i in range(len(sent))]
+def sent2features(sent, words_before=2, words_after=2, method="get_word_feat"):
+    f = locals[method]
+    return [word2features(sent, i, words_before, words_after, f) for i in range(len(sent))]
 
 
 def sent2labels(sent):
