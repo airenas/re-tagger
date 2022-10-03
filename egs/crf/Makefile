@@ -7,6 +7,9 @@ zip=MATAS-20-06-05-v1.0.zip
 out_dir?=data
 python_dir=${CURDIR}/../../src/utils
 python_cmd=PYTHONPATH=../../ LOG_LEVEL=INFO python
+f_before?=2
+f_after?=2
+f_func?=get_word_feat
 ############################################
 ${out_dir}:
 	mkdir -p $@	
@@ -24,12 +27,15 @@ ${out_dir}/test_f.txt: ${out_dir}/test.txt
 ############################################
 train: ${out_dir}/model.crf
 ${out_dir}/model.crf: ${out_dir}/train_f.txt
-	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out ${out_dir}/model.crf
+	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out ${out_dir}/model.crf --f_before $(f_before) \
+	--f_after $(f_after) --f_func $(f_func)
 test/train: ${out_dir}/model.crf ${out_dir}/train_f.txt
-	$(python_cmd) local/test.py --input ${out_dir}/train_f.txt --model ${out_dir}/model.crf
+	$(python_cmd) local/test.py --input ${out_dir}/train_f.txt --model ${out_dir}/model.crf \
+	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
 test/test: ${out_dir}/test_pred.txt
 ${out_dir}/test_pred.txt: ${out_dir}/model.crf ${out_dir}/test_f.txt
-	$(python_cmd) local/test.py --input ${out_dir}/test_f.txt --model ${out_dir}/model.crf --out $@
+	$(python_cmd) local/test.py --input ${out_dir}/test_f.txt --model ${out_dir}/model.crf --out $@ \
+	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
 show/labels: ${out_dir}/train_f.txt
 	$(python_cmd) local/show_labels.py --input $^
 ${out_dir}/test_pred_restore.txt: ${out_dir}/test_pred.txt ${out_dir}/test_lemma_tags.txt

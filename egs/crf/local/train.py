@@ -16,6 +16,9 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
     parser.add_argument("--out", nargs='?', required=True, help="Model output file")
+    parser.add_argument("--f_before", nargs='?', default=2, help="How many words use for features")
+    parser.add_argument("--f_after", nargs='?', default=2, help="How many words use for features after")
+    parser.add_argument("--f_func", nargs='?', default="get_word_feat", help="Features function")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -24,11 +27,12 @@ def main(argv):
     data['train'] = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
 
     print(data['train'], sep='\n\n')
+    logger.info("Features: [-{},w,{}], func: {}".format(args.f_before, args.f_after, args.f_func))
     logger.info("preparing data")
     train_sents = format_data(data['train'])
-    x_train = [sent2features(s) for s in train_sents]
+    x_train = [sent2features(s, words_before=int(args.f_before), words_after=int(args.f_after), method=args.f_func) for s in train_sents]
     y_train = [sent2labels(s) for s in train_sents]
-    print(x_train[0][0:2], sep='\n\n')
+    print(x_train[0][0:4], sep='\n\n')
 
     logger.info("training crf")
     crf = sklearn_crfsuite.CRF(

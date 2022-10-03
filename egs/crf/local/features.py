@@ -52,7 +52,7 @@ def word2features(sent, i, words_before, words_after, extract_func):
     else:
         features['BOS'] = True
 
-    for ib in range(2, - words_before - 1, -1):
+    for ib in range(2, words_before + 1):
         if (i - ib) >= 0:
             features.update(extract_func(sent[i - ib][0], '-{}:'.format(ib)))
 
@@ -70,7 +70,7 @@ def word2features(sent, i, words_before, words_after, extract_func):
 
 
 def sent2features(sent, words_before=2, words_after=2, method="get_word_feat"):
-    f = locals[method]
+    f = globals()[method]
     return [word2features(sent, i, words_before, words_after, f) for i in range(len(sent))]
 
 

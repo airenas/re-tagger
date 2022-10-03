@@ -4,9 +4,7 @@ import pickle
 import sys
 
 import pandas as pd
-from sklearn import metrics
 from sklearn_crfsuite import metrics as crfmetrics
-from sklearn_crfsuite.utils import flatten
 
 from egs.crf.local.features import format_data, sent2features, sent2labels
 from src.utils.logger import logger
@@ -19,6 +17,9 @@ def main(argv):
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
     parser.add_argument("--model", nargs='?', required=True, help="Model file")
     parser.add_argument("--out", nargs='?', required=False, help="Writes out predictions to tab separated file")
+    parser.add_argument("--f_before", nargs='?', default=2, help="How many words use for features")
+    parser.add_argument("--f_after", nargs='?', default=2, help="How many words use for features after")
+    parser.add_argument("--f_func", nargs='?', default="get_word_feat", help="Features function")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -27,9 +28,12 @@ def main(argv):
     data = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
 
     print(data, sep='\n\n')
+
+    logger.info("Features: [-{},w,{}], func: {}".format(args.f_before, args.f_after, args.f_func))
     logger.info("preparing data")
     test_sents = format_data(data)
-    x_test = [sent2features(s) for s in test_sents]
+    x_test = [sent2features(s, words_before=int(args.f_before), words_after=int(args.f_after), method=args.f_func) for s
+              in test_sents]
     y_test = [sent2labels(s) for s in test_sents]
     logger.info("loading crf from {}".format(args.model))
     with open(args.model, "rb") as f:
