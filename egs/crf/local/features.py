@@ -20,6 +20,20 @@ def get_word_feat_v0(word, prefix):
     return res
 
 
+def get_word_feat_v0_punct(word, prefix):
+    wl = word.lower()
+    if word in string.punctuation:
+        res = {
+            prefix + 'word': word,
+            prefix + 'word.lower()': wl,
+            prefix + 'len(word)': len(word),
+            prefix + 'word.ispunctuation': True,
+        }
+    else:
+        res = get_word_feat_v0(word, prefix)
+    return res
+
+
 def get_word_feat(word, prefix):
     wl = word.lower()
     if word in string.punctuation:
