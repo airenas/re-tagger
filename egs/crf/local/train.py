@@ -32,7 +32,7 @@ def main(argv):
     train_sents = format_data(data['train'])
     x_train = [sent2features(s, words_before=int(args.f_before), words_after=int(args.f_after), method=args.f_func) for s in train_sents]
     y_train = [sent2labels(s) for s in train_sents]
-    print(x_train[0][0:4], sep='\n\n')
+    print(x_train[0][:], sep='\n\n')
 
     logger.info("training crf")
     crf = sklearn_crfsuite.CRF(

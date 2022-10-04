@@ -9,7 +9,7 @@ python_dir=${CURDIR}/../../src/utils
 python_cmd=PYTHONPATH=../../ LOG_LEVEL=INFO python
 f_before?=2
 f_after?=2
-f_func?=get_word_feat
+f_func?=feat_word_v1
 ############################################
 ${out_dir}:
 	mkdir -p $@	

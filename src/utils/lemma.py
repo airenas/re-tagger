@@ -48,7 +48,9 @@ class Lemmatizer:
     def __init__(self, url: str):
         logger.info("Init lemma at: %s" % (url))
         self.__url = url
-        self.cache = add_initial()
+        self.cache = dict()
+        for v, k in add_initial().items():
+            self.cache[v] = ":" + k
         if os.path.exists(_path):
             with open(_path, 'r') as file:
                 for line in file:
@@ -58,7 +60,7 @@ class Lemmatizer:
 
     def get(self, txt: str) -> str:
         if txt.isdigit():
-            return "M----d-"
+            return ":M----d-"
         if txt in self.cache:
             return self.cache[txt]
         try:
@@ -68,7 +70,7 @@ class Lemmatizer:
                 self.fd.write("{}\t{}\n".format(txt, res))
         except BaseException as err:
             logger.error(err)
-            res = "Xf"
+            res = ":Xf"
         if not res:
             logger.warn("no lemma '%s'" % txt)
         return res

@@ -36,6 +36,8 @@ def main(argv):
                             raise Exception("problem at {}, '{}' != '{}'".format(li, wrds[1], lwp[0]))
                         if len(lwp) > 1:
                             wrds.append(lwp[1])
+                        else:
+                            wrds.append("_")
                         line = "\t".join(wrds)
                     print(line)
             print()
