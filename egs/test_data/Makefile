@@ -47,6 +47,8 @@ count/morph: ${out_dir}/test_morph.txt
 	$(python_cmd) local/count_morph.py --show --input $^
 count/morph-vs-matas: ${out_dir}/test_morph.txt ${out_dir}/test_plain.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_morph.txt --p2 2 > ${out_dir}/morf.cmp
+count/oracle: ${out_dir}/test_lemma_tags.txt ${out_dir}/test_plain.txt
+	$(python_cmd) local/count_oracle.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_lemma_tags.txt > ${out_dir}/test.oracle
 ############################################
 start/lema:
 	docker run -it -e SECRET=$(LEMA_SECRET) -e LEMA_TYPE=hunspell \
