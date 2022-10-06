@@ -49,3 +49,7 @@ python
 python
 
 
+## https://www.aitimejournal.com/@akshay.chavan/complete-tutorial-on-named-entity-recognition-ner-using-python-and-keras
+2019
+https://github.com/Akshayc1/named-entity-recognition
+TF BiLSTM - CRF
