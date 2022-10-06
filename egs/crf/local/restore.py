@@ -38,16 +38,16 @@ def restore(all, pred):
         return pred, False, True, False
     bv = 1000
     pl = list(pred)
-    mult = 0
+    mult = set()
     res = ""
     for t in all:
         v = calc(pl, list(t))
         if v < 1:
-            mult += 1
+            mult.add(t)
         if v < bv:
             bv = v
             res = t
-    return res, bv < 1, bv == 50, mult > 1
+    return res, bv < 1, bv == 50, len(mult) > 1
 
 
 def main(argv):
@@ -77,7 +77,9 @@ def main(argv):
                 else:
                     all_tags = wl[1].split(":")
                 if wp[0] != wl[0]:
-                    raise Exception("problem at {}, {} != {}".format(wc, wp[0], wl[0]))
+                        wl[0] = wl[0].replace("#", "_")    
+                if wp[0] != wl[0]:
+                    raise Exception("problem at {}, '{}' != '{}'".format(wc, wp[0], wl[0]))
                 try:
                     fp, match, no_pos, several_match = restore(all_tags, wp[1])
                     print("{}\t{}\t{}\t{}".format(wl[0], fp, ":".join(all_tags), wp[1]))
