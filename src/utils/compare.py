@@ -27,8 +27,12 @@ def main(argv):
         with open(args.f2, 'r') as f2:
             f2i = iter(f2)
             for l1 in f1:
+                try:
+                    l2 = next(f2i)
+                except StopIteration:
+                    logger.warning("Files not match")
+                    break
                 wc += 1
-                l2 = next(f2i)
                 l1 = l1.strip()
                 l2 = l2.strip()
                 w1 = l1.split("\t")
@@ -51,7 +55,8 @@ def main(argv):
                 else:
                     print("{}\t{}".format(w1[0], w1[args.p1]))
     logger.info("Results: all: {}, err: {}, {}".format(wc, errc, errc / wc))
-    logger.info("Results: multiple: {}, err: {}, {}".format(mwc, errmvc, errmvc / mwc))
+    if mwc > 0:
+        logger.info("Results: multiple: {}, err: {}, {}".format(mwc, errmvc, errmvc / mwc))
     logger.info("Acc: {}".format(accuracy_score(y_true, y_pred)))
     labels = set()
     for la in y_true:
