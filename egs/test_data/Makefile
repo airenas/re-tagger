@@ -65,13 +65,22 @@ ${out_dir}/unneeded_params.txt: ${out_dir}/train_lemma.txt
 ${out_dir}/test_lemma_tags.txt: ${out_dir}/test_lemma.txt
 	$(python_cmd) local/to_tags.py --input $^ > $@_
 	mv $@_ $@
+${out_dir}/train_lemma_tags.txt: ${out_dir}/train_lemma.txt
+	$(python_cmd) local/to_tags.py --input $^ > $@_
+	mv $@_ $@
 ############################################
 ${out_dir}/test_plain.txt: ${out_dir}/test.txt
 	$(python_cmd) local/to_plain.py --input $^ > $@_
-	mv $@_ $@	
+	mv $@_ $@
+${out_dir}/train_v1.txt: ${out_dir}/train.txt
+	$(python_cmd) local/fix_data.py --input $^ > $@_
+	mv $@_ $@
+${out_dir}/train_plain.txt: ${out_dir}/train_v1.txt
+	$(python_cmd) local/to_plain.py --input $^ > $@_
+	mv $@_ $@
 ############################################
 build: ${out_dir}/test_lemma_tags.txt ${out_dir}/train_lemma.txt ${out_dir}/test_morph.txt \
-	${out_dir}/test_plain.txt
+	${out_dir}/test_plain.txt ${out_dir}/train_lemma_tags.txt ${out_dir}/train_plain.txt
 .PHONY: build
 unneeded: ${out_dir}/unneeded_params.txt 
 ############################################

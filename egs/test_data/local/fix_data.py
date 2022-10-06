@@ -5,12 +5,8 @@ from src.utils.conllu import ConlluReader
 from src.utils.logger import logger
 
 
-def lemmas(l, w):
-    return l.get(w)
-
-
 def main(argv):
-    parser = argparse.ArgumentParser(description="Prepares plain result file with word\ttag",
+    parser = argparse.ArgumentParser(description="Fix conllu file",
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
@@ -19,21 +15,19 @@ def main(argv):
     logger.info("Starting")
 
     # read test sentences
-    sc, wc = 0, 0
+    sc, ws = 0, 0
     with ConlluReader(args.input) as cr:
         for sent in cr:
             sc += 1
-            words = list(sent.words())
-            try:
-                expected = list(sent.tags())
-            except BaseException as err:
-                raise Exception("problem at {}, '{}', err: {}".format(sc, ' '.join(words), err))
-            for i in range(len(words)):
-                wc += 1
-                print("%s\t%s" % (words[i], expected[i]))
+            for line in sent.lines:
+                if "<g/>" in line:
+                    ws += 1
+                else:
+                    print(line)
+            print()
 
-    logger.info("Read %d sentences, %d words" % (sc, wc))
-    logger.info("Done")
+    print("Read %d sentences, %d skipped g's" % (sc, ws), file=sys.stderr)
+    print("Done", file=sys.stderr)
 
 
 if __name__ == "__main__":
