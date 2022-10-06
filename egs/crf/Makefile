@@ -35,8 +35,9 @@ train: ${out_dir}/model.crf
 ${out_dir}/model.crf: ${out_dir}/train_fl.txt
 	$(python_cmd) local/train.py --input ${out_dir}/train_fl.txt --out ${out_dir}/model.crf --f_before $(f_before) \
 	--f_after $(f_after) --f_func $(f_func)
-test/train: ${out_dir}/model.crf ${out_dir}/train_fl.txt
-	$(python_cmd) local/test.py --input ${out_dir}/train_fl.txt --model ${out_dir}/model.crf \
+test/train: ${out_dir}/train_pred.txt
+${out_dir}/train_pred.txt: ${out_dir}/model.crf ${out_dir}/train_fl.txt
+	$(python_cmd) local/test.py --input ${out_dir}/train_fl.txt --model ${out_dir}/model.crf --out $@ \
 	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
 test/test: ${out_dir}/test_pred.txt
 ${out_dir}/test_pred.txt: ${out_dir}/model.crf ${out_dir}/test_fl.txt
@@ -47,10 +48,16 @@ show/labels: ${out_dir}/train_fl.txt
 ${out_dir}/test_pred_restore.txt: ${out_dir}/test_pred.txt ${out_dir}/test_lemma_tags.txt
 	$(python_cmd) local/restore.py --lemmas ${out_dir}/test_lemma_tags.txt --pred ${out_dir}/test_pred.txt > $@_
 	mv $@_ $@
+${out_dir}/train_pred_restore.txt: ${out_dir}/train_pred.txt ${out_dir}/train_lemma_tags.txt
+	$(python_cmd) local/restore.py --lemmas ${out_dir}/train_lemma_tags.txt --pred ${out_dir}/train_pred.txt > $@_
+	mv $@_ $@
 ${out_dir}/test_final_calc.txt: ${out_dir}/test_pred_restore.txt ${out_dir}/test_plain.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_pred_restore.txt > $@_
 	mv $@_ $@
-calc/final: ${out_dir}/test_final_calc.txt
+${out_dir}/train_final_calc.txt: ${out_dir}/train_pred_restore.txt ${out_dir}/train_plain.txt
+	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/train_plain.txt --f2 ${out_dir}/train_pred_restore.txt > $@_
+	mv $@_ $@
+calc/final: ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
 ############################################
 build: test/train test/test
 .PHONY: build
