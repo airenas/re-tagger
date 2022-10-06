@@ -42,7 +42,9 @@ def main(argv):
                 if len(w2) < p2:
                     raise Exception("problem at {}, {}: {}".format(args.f2, wc, l2))
                 if w1[0] != w2[0]:
-                    raise Exception("problem at {}, {} != {}".format(wc, w1[0], w2[0]))
+                        w1[0] = w1[0].replace("#", "_").strip()
+                if w1[0] != w2[0]:
+                    raise Exception("problem at {}, '{}' != '{}'".format(wc, w1[0], w2[0]))
                 y_true.append(w1[p1])
                 y_pred.append(w2[p2])
                 if " " in w1[0]:
