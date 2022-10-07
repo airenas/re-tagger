@@ -5,12 +5,11 @@ import sys
 
 import pandas as pd
 import tensorflow as tf
-from tensorflow_addons.text import CRFModelWrapper
 
 from src.utils.logger import logger
 
 
-def format_data(csv_data, tag_to_index):
+def format_data(csv_data):
     pos_id = 9
     w_prev = 0
     res = []
@@ -20,27 +19,31 @@ def format_data(csv_data, tag_to_index):
         if math.isnan(w_num):
             continue
         if (w_num == 1.0 or w_num < w_prev) and len(words) > 0:
-            res.append({"tokens": words, "tags": [tag_to_index[t] for t in tags]})
+            res.append({"tokens": words, "tags": tags})
             words, tags = [], []
         words.append(csv_data.iloc[i, 1])
         tags.append(csv_data.iloc[i, pos_id])
         w_prev = w_num
     if len(words) > 0:
-        res.append({"tokens": words, "tags": [tag_to_index[t] for t in tags]})
+        res.append({"tokens": words, "tags": tags})
     return res
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description="Trains bilstm-crf model",
+    parser = argparse.ArgumentParser(description="Predicts with bilstm-crf model",
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
+    parser.add_argument("--input", nargs='?', required=True, help="Test conllu file")
+    parser.add_argument("--model", nargs='?', required=True, help="Input model")
     parser.add_argument("--in_v", nargs='?', required=True, help="Input vocab")
     parser.add_argument("--in_t", nargs='?', required=True, help="Input tags vocab")
-    parser.add_argument("--out", nargs='?', required=True, help="Model output file")
+    parser.add_argument("--out", nargs='?', required=True, help="Prediction output file")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
+    logger.info("loading model {}".format(args.in_v))
+    model = tf.keras.models.load_model(args.model)
+    model.summary()
     logger.info("loading data {}".format(args.input))
     data = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
     logger.info("sample data")
@@ -53,47 +56,22 @@ def main(argv):
     with open(args.in_t, 'r') as f:
         tags = [w.strip() for w in f]
     logger.info("tags count {}".format(len(tags)))
-    tag_to_index = {w: i for i, w in enumerate(tags)}
     logger.info("preparing data")
-    data_train = format_data(data, tag_to_index)
+    data_test = format_data(data)
     # Model architecture
     num_tags = len(tags)
-    embedding = 100
-    batch_size = 32
-
-    input = tf.keras.layers.Input(shape=(None,))
-    output = tf.keras.layers.Embedding(input_dim=len(words) + 2, output_dim=embedding, mask_zero=True)(input)
-    output = tf.keras.layers.Bidirectional(
-        tf.keras.layers.LSTM(units=50, return_sequences=True, recurrent_dropout=0.1))(output)
-    output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(20, activation="relu"))(output)
-    m1 = tf.keras.Model(input, output)
-    m1.summary()
-    model = CRFModelWrapper(m1, num_tags)
-    model.compile(optimizer=tf.keras.optimizers.Adam(0.02))
 
     train_tokens = tf.ragged.constant(words)
     # train_tokens = tf.map_fn(tf.strings.lower, train_tokens)
     lookup_layer = tf.keras.layers.StringLookup(max_tokens=len(words), oov_token="[UNK]")
     lookup_layer.adapt(train_tokens)
 
-    print(len(lookup_layer.get_vocabulary()))
-    print(lookup_layer.get_vocabulary()[:10])
-
-    def create_data_generator(dataset):
-        def data_generator():
-            for item in dataset:
-                yield item['tokens'], item['tags']
-
-        return data_generator
+    logger.info("lookup vocab size {}".format(len(lookup_layer.get_vocabulary())))
+    logger.info("first ten words: {}".format(lookup_layer.get_vocabulary()[:10]))
 
     data_signature = (
         tf.TensorSpec(shape=(None,), dtype=tf.string),
         tf.TensorSpec(shape=(None,), dtype=tf.int32)
-    )
-
-    train_data = tf.data.Dataset.from_generator(
-        create_data_generator(data_train),
-        output_signature=data_signature
     )
 
     def dataset_preprocess(tokens, tag_ids):
@@ -109,23 +87,28 @@ def main(argv):
         # tokens = tf.strings.lower(tokens)
         return lookup_layer(tokens)
 
-    # With `padded_batch()`, each batch may have different length
-    # shape: (batch_size, None)
-    train_dataset = (
-        train_data.map(dataset_preprocess)
-            .padded_batch(batch_size=batch_size).cache()
-    )
+    with open(args.out, 'w') as f:
+        for item in data_test:
+            tokens = item['tokens']
+            print("raw inputs: ", tokens)
+            # preprocess
+            preprocessed_inputs = preprecess_tokens(tokens)
+            inputs = tf.reshape(preprocessed_inputs, shape=[1, -1])
+            outputs = model(inputs)
+            print("raw outputs: ", outputs)
+            prediction = [tags[i] for i in outputs[0]]
+            print("prediction: ", prediction)
+            for i, w in enumerate(tokens):
+                print("{}\t{}".format(w, prediction[i], file=f))
 
-    # checkpointer = ModelCheckpoint(filepath='model.tf',
-    #                                verbose=2,
-    #                                mode='auto',
-    #                                save_best_only=True,
-    #                                monitor='crf_loss')
+    #     prediction = [tags[i] for i in outputs[0]]
+    #
+    # sample_tags = [raw_tags[i] for i in sample_tag_ids]
 
-    model.fit(train_dataset, epochs=10, verbose=1, callbacks=[])
-    model.summary(150)
-    logger.info('Saving tf model ...')
-    tf.keras.models.save_model(model, args.out)
+    # # Keypoint: EU -> B-ORG, German -> B-MISC, British -> B-MISC
+    # print("ground true tags: ", sample_tags)
+    # print("predicted tags: ", prediction)
+
     logger.info("Done")
 
 

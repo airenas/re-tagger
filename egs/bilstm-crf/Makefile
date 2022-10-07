@@ -4,6 +4,7 @@ take_n?=100000000000000
 ############################################
 data_dir?=../../data
 out_dir?=data
+model=${out_dir}/models/morph/1
 python_dir=${CURDIR}/../../src/utils
 python_cmd=PYTHONPATH=../../ LOG_LEVEL=INFO python
 ############################################
@@ -22,7 +23,7 @@ ${out_dir}/test_f.txt: ${out_dir}/test.txt
 	mv $@_ $@
 ############################################
 train: ${out_dir}/models/morph
-${out_dir}/models/morph: ${out_dir}/train_f.txt ${out_dir}/words ${out_dir}/tags
+${model}: ${out_dir}/train_f.txt ${out_dir}/words ${out_dir}/tags
 	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --in_v ${out_dir}/words --in_t ${out_dir}/tags --out $@
 ${out_dir}/words ${out_dir}/tags: ${out_dir}/train_f.txt
 	$(python_cmd) local/prepare_vocab.py --input $^ --out_v ${out_dir}/words --out_t ${out_dir}/tags
@@ -34,10 +35,11 @@ test/serving-api:
 # test/train: ${out_dir}/model.crf ${out_dir}/train_fl.txt
 # 	$(python_cmd) local/test.py --input ${out_dir}/train_fl.txt --model ${out_dir}/model.crf \
 # 	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
-# test/test: ${out_dir}/test_pred.txt
-# ${out_dir}/test_pred.txt: ${out_dir}/model.crf ${out_dir}/test_fl.txt
-# 	$(python_cmd) local/test.py --input ${out_dir}/test_fl.txt --model ${out_dir}/model.crf --out $@ \
-# 	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
+test/test: ${out_dir}/test_pred.txt
+${out_dir}/test_pred.txt: ${model} ${out_dir}/test_f.txt
+	$(python_cmd) local/test.py --input ${out_dir}/test_f.txt --model ${model} \
+		--in_v ${out_dir}/words --in_t ${out_dir}/tags --out $@_
+		mv $@_ $@
 # show/labels: ${out_dir}/train_fl.txt
 # 	$(python_cmd) local/show_labels.py --input $^
 # ${out_dir}/test_pred_restore.txt: ${out_dir}/test_pred.txt ${out_dir}/test_lemma_tags.txt
