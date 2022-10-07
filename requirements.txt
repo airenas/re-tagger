@@ -5,3 +5,5 @@ requests~=2.22.0
 pandas~=1.5.0
 scikit-learn~=1.1.2
 sklearn-crfsuite~=0.3.6
+tensorflow~=2.10.0
+tensorflow-addons~=0.18.0
