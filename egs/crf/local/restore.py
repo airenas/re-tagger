@@ -77,7 +77,8 @@ def main(argv):
                 else:
                     all_tags = wl[1].split(":")
                 if wp[0] != wl[0]:
-                        wl[0] = wl[0].replace("#", "_")    
+                        wl[0] = wl[0].replace("#", "_").strip()
+                        wp[0] = wp[0].replace("#", "_").strip()
                 if wp[0] != wl[0]:
                     raise Exception("problem at {}, '{}' != '{}'".format(wc, wp[0], wl[0]))
                 try:
