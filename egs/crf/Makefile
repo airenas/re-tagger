@@ -59,7 +59,7 @@ ${out_dir}/test_final_calc.txt: ${out_dir}/test_pred_restore.txt ${out_dir}/test
 ${out_dir}/train_final_calc.txt: ${out_dir}/train_pred_restore.txt ${out_dir}/train_plain.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/train_plain.txt --f2 ${out_dir}/train_pred_restore.txt > $@_
 	mv $@_ $@
-calc/final: ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
+calc/final: clean/test ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
 ############################################
 build: test/train test/test
 .PHONY: build
@@ -67,4 +67,7 @@ build: test/train test/test
 clean:
 	rm -rf $(out_dir)
 .PHONY: clean
+clean/test:
+	rm -f ${out_dir}/test_final_calc.txt
+.PHONY: clean/test
 .EXPORT_ALL_VARIABLES:
