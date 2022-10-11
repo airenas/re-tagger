@@ -25,7 +25,7 @@ def calc(p, t):
     for i, v in enumerate(p):
         if v != t[i]:
             if half_change(p[0], v, t[i], i):
-                res += .02
+                res += .03
             elif v != '-':
                 res += 1
             else:
@@ -33,7 +33,7 @@ def calc(p, t):
     return res
 
 
-def restore(all, pred):
+def restore(all, pred, tags):
     if len(all) == 0:
         return pred, False, True, False
     bv = 1000
@@ -42,8 +42,12 @@ def restore(all, pred):
     res = ""
     for t in all:
         v = calc(pl, list(t))
+        freq_p = 0.001 / (tags.get(t, 0) + 1.0)
+        v += freq_p
         if v < 1:
             mult.add(t)
+            if len(mult) > 1:
+                pass
         if v < bv:
             bv = v
             res = t
@@ -56,9 +60,12 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--lemmas", nargs='?', required=True, help="File with all possible lemmas")
     parser.add_argument("--pred", nargs='?', required=True, help="Prediction file")
+    parser.add_argument("--tags", nargs='?', required=True, help="Tags frequency file")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
+    with open(args.tags, 'r') as f:
+        tags = {it[0]: int(it[1]) for it in [w.strip().split("\t") for w in f]}
     logger.info("File lemmas: {}".format(args.lemmas))
     logger.info("File pred  : {}".format(args.pred))
     wc, rc, mpc, nopc, multi_wc = 0, 0, 0, 0, 0
@@ -77,12 +84,12 @@ def main(argv):
                 else:
                     all_tags = wl[1].split(":")
                 if wp[0] != wl[0]:
-                        wl[0] = wl[0].replace("#", "_").strip()
-                        wp[0] = wp[0].replace("#", "_").strip()
+                    wl[0] = wl[0].replace("#", "_").strip()
+                    wp[0] = wp[0].replace("#", "_").strip()
                 if wp[0] != wl[0]:
                     raise Exception("problem at {}, '{}' != '{}'".format(wc, wp[0], wl[0]))
                 try:
-                    fp, match, no_pos, several_match = restore(all_tags, wp[1])
+                    fp, match, no_pos, several_match = restore(all_tags, wp[1], tags)
                     print("{}\t{}\t{}\t{}".format(wl[0], fp, ":".join(all_tags), wp[1]))
                     if match:
                         rc += 1

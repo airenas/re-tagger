@@ -45,11 +45,13 @@ ${out_dir}/test_pred.txt: ${out_dir}/model.crf ${out_dir}/test_fl.txt
 	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
 show/labels: ${out_dir}/train_fl.txt
 	$(python_cmd) local/show_labels.py --input $^
-${out_dir}/test_pred_restore.txt: ${out_dir}/test_pred.txt ${out_dir}/test_lemma_tags.txt
-	$(python_cmd) local/restore.py --lemmas ${out_dir}/test_lemma_tags.txt --pred ${out_dir}/test_pred.txt > $@_
+${out_dir}/test_pred_restore.txt: ${out_dir}/test_pred.txt ${out_dir}/test_lemma_tags.txt ${out_dir}/tags.txt
+	$(python_cmd) local/restore.py --lemmas ${out_dir}/test_lemma_tags.txt --pred ${out_dir}/test_pred.txt \
+		--tags ${out_dir}/tags.txt > $@_
 	mv $@_ $@
-${out_dir}/train_pred_restore.txt: ${out_dir}/train_pred.txt ${out_dir}/train_lemma_tags.txt
-	$(python_cmd) local/restore.py --lemmas ${out_dir}/train_lemma_tags.txt --pred ${out_dir}/train_pred.txt > $@_
+${out_dir}/train_pred_restore.txt: ${out_dir}/train_pred.txt ${out_dir}/train_lemma_tags.txt ${out_dir}/tags.txt
+	$(python_cmd) local/restore.py --lemmas ${out_dir}/train_lemma_tags.txt --pred ${out_dir}/train_pred.txt \
+		--tags ${out_dir}/tags.txt > $@_
 	mv $@_ $@
 ${out_dir}/test_final_calc.txt: ${out_dir}/test_pred_restore.txt ${out_dir}/test_plain.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_pred_restore.txt > $@_
