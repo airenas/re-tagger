@@ -15,6 +15,8 @@ def not_important(w, t1, t2):
         return True
     if t1l[0] == "N" and t2l[0] == "N" and t1l[0:-1] == t2l[0:-1]:
         return True
+    if t1l[0] == "S" and t2l[0] == "S" and t1l[0:-1] == t2l[0:-1]:
+        return True
     return False
 
 
