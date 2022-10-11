@@ -49,6 +49,10 @@ count/morph-vs-matas: ${out_dir}/test_morph.txt ${out_dir}/test_plain.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_morph.txt --p2 2 > ${out_dir}/morf.cmp
 count/oracle: ${out_dir}/test_lemma_tags.txt ${out_dir}/test_plain.txt
 	$(python_cmd) local/count_oracle.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_lemma_tags.txt > ${out_dir}/test.oracle
+count/tags: ${out_dir}/tags.txt
+${out_dir}/tags.txt: ${out_dir}/train_plain.txt
+	$(python_cmd) local/count_tags.py --input $^ > $@_
+	mv $@_ $@
 ############################################
 start/lema:
 	docker run -it -e SECRET=$(LEMA_SECRET) -e LEMA_TYPE=hunspell \
@@ -80,7 +84,8 @@ ${out_dir}/train_plain.txt: ${out_dir}/train.txt
 	mv $@_ $@
 ############################################
 build: ${out_dir}/test_lemma_tags.txt ${out_dir}/train_lemma.txt ${out_dir}/test_morph.txt \
-	${out_dir}/test_plain.txt ${out_dir}/train_lemma_tags.txt ${out_dir}/train_plain.txt
+	${out_dir}/test_plain.txt ${out_dir}/train_lemma_tags.txt ${out_dir}/train_plain.txt \
+	${out_dir}/tags.txt
 .PHONY: build
 unneeded: ${out_dir}/unneeded_params.txt 
 ############################################

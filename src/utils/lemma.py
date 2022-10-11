@@ -71,8 +71,8 @@ class Lemmatizer:
         except BaseException as err:
             logger.error(err)
             res = ":Xf"
-        if not res:
-            logger.warn("no lemma '%s'" % txt)
+        # if not res:
+        #     logger.warn("no lemma '%s'" % txt)
         return res
 
     def call_service(self, txt: str) -> str:
