@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+from tqdm import tqdm
+
 from src.utils.conllu import ConlluReader
 from src.utils.lemma import Lemmatizer
 from src.utils.logger import logger
@@ -24,12 +26,14 @@ def main(argv):
     sc, wc = 0, 0
     with ConlluReader(args.input) as cr:
         with Lemmatizer(args.url) as lemma:
-            for sent in cr:
-                sc += 1
-                wrds = sent.words()
-                for w in wrds:
-                    wc += 1
-                    print("%s\t%s" % (w, lemmas(lemma, w)))
+            with tqdm(desc="lemmatizing") as pbar:
+                for sent in cr:
+                    sc += 1
+                    pbar.update(1)
+                    wrds = sent.words()
+                    for w in wrds:
+                        wc += 1
+                        print("%s\t%s" % (w, lemmas(lemma, w)))
 
     print("Read %d sentences, %d words" % (sc, wc), file=sys.stderr)
     print("Done", file=sys.stderr)

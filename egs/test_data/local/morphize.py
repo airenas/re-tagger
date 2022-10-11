@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+from tqdm import tqdm
+
 from src.utils.conllu import ConlluReader
 from src.utils.logger import logger
 from src.utils.morph import Morphizer
@@ -24,15 +26,17 @@ def main(argv):
     sc, wc = 0, 0
     morph = Morphizer(args.url)
     with ConlluReader(args.input) as cr:
-        for sent in cr:
-            sc += 1
-            words = list(sent.words())
-            expected = list(sent.tags())
-            morphs = morph.invoke(words)
-            # logger.info(words)
-            for i in range(len(words)):
-                wc += 1
-                print("%s\t%s\t%s" % (words[i], expected[i], morphs[i]))
+        with tqdm(desc="morphizing") as pbar:
+            for sent in cr:
+                pbar.update(1)
+                sc += 1
+                words = list(sent.words())
+                expected = list(sent.tags())
+                morphs = morph.invoke(words)
+                # logger.info(words)
+                for i in range(len(words)):
+                    wc += 1
+                    print("%s\t%s\t%s" % (words[i], expected[i], morphs[i]))
 
     logger.info("Read %d sentences, %d words" % (sc, wc))
     logger.info("Done")
