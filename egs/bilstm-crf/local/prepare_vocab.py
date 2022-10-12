@@ -24,6 +24,8 @@ def main(argv):
     logger.info("tags count {}".format(len(tags)))
     words = list(data[1].unique())
     logger.info("words count: {}".format(len(words)))
+    ends = list(set([str(w[-4:]).lower() for w in words]))
+    logger.info("ends count: {}".format(len(ends)))
 
     logger.info("saving {}".format(args.out_v))
     with open(args.out_v, 'w') as f:
@@ -33,6 +35,10 @@ def main(argv):
     logger.info("saving {}".format(args.out_t))
     with open(args.out_t, 'w') as f:
         for w in tags:
+            print(w, file=f)
+    logger.info("saving {}".format(args.out_v + ".end"))
+    with open(args.out_v + ".end", 'w') as f:
+        for w in ends:
             print(w, file=f)
     logger.info("Done")
 
