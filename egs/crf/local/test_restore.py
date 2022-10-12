@@ -9,7 +9,7 @@ from egs.crf.local.restore import restore
                              ("Agpn--n:Agpfsvn:Agpfsin:Agpfsnn", "A--f---", {"Agpfsin": 1}, "Agpfsin"),
                              ("Agpn--n:Agpfsvn:Agpfsin:Agpfsnn", "A--f---", {"Agpfsin": 1, "Agpfsnn": 2000}, "Agpfsnn"),
                          ])
-class TestRound:
+class TestRestore:
     def test_round(self, all_tags, pred, tags, exp):
         res, _, _, _ = restore(all_tags.split(":"), pred, tags)
         assert res == exp

@@ -20,6 +20,8 @@ def main(argv):
     parser.add_argument("--f_before", nargs='?', default=2, help="How many words use for features")
     parser.add_argument("--f_after", nargs='?', default=2, help="How many words use for features after")
     parser.add_argument("--f_func", nargs='?', default="get_word_feat", help="Features function")
+    parser.add_argument("--f_skip_punct", default=False, action=argparse.BooleanOptionalAction,
+                        help="Skip punctuation in features")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -29,11 +31,15 @@ def main(argv):
 
     print(data, sep='\n\n')
 
-    logger.info("Features: [-{},w,{}], func: {}".format(args.f_before, args.f_after, args.f_func))
+    logger.info(
+        "Features: [-{},w,{}], func: {}, skip punct: {}".format(args.f_before, args.f_after, args.f_func,
+                                                                args.f_skip_punct))
     logger.info("preparing data")
+
     test_sents = format_data(data)
-    x_test = [sent2features(s, words_before=int(args.f_before), words_after=int(args.f_after), method=args.f_func) for s
-              in test_sents]
+    params = {"words_before": int(args.f_before), "words_after": int(args.f_after), "method": args.f_func,
+              "skip_punct": args.f_skip_punct}
+    x_test = [sent2features(s, params=params) for s in test_sents]
     y_test = [sent2labels(s) for s in test_sents]
     logger.info("loading crf from {}".format(args.model))
     with open(args.model, "rb") as f:

@@ -10,6 +10,7 @@ python_cmd=PYTHONPATH=../../ LOG_LEVEL=INFO python
 f_before?=2
 f_after?=2
 f_func?=feat_word_v1
+f_skip_punct=
 ############################################
 ${out_dir}:
 	mkdir -p $@	
@@ -34,15 +35,15 @@ ${out_dir}/test_fl.txt: ${out_dir}/test_f.txt ${out_dir}/test_lemma.txt
 train: ${out_dir}/model.crf
 ${out_dir}/model.crf: ${out_dir}/train_fl.txt
 	$(python_cmd) local/train.py --input ${out_dir}/train_fl.txt --out ${out_dir}/model.crf --f_before $(f_before) \
-	--f_after $(f_after) --f_func $(f_func)
+	--f_after $(f_after) --f_func $(f_func) $(f_skip_punct)
 test/train: ${out_dir}/train_pred.txt
 ${out_dir}/train_pred.txt: ${out_dir}/model.crf ${out_dir}/train_fl.txt
 	$(python_cmd) local/test.py --input ${out_dir}/train_fl.txt --model ${out_dir}/model.crf --out $@ \
-	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
+	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func) $(f_skip_punct)
 test/test: ${out_dir}/test_pred.txt
 ${out_dir}/test_pred.txt: ${out_dir}/model.crf ${out_dir}/test_fl.txt
 	$(python_cmd) local/test.py --input ${out_dir}/test_fl.txt --model ${out_dir}/model.crf --out $@ \
-	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func)
+	--f_before $(f_before) --f_after $(f_after) --f_func $(f_func) $(f_skip_punct)
 show/labels: ${out_dir}/train_fl.txt
 	$(python_cmd) local/show_labels.py --input $^
 ${out_dir}/test_pred_restore.txt: ${out_dir}/test_pred.txt ${out_dir}/test_lemma_tags.txt ${out_dir}/tags.txt

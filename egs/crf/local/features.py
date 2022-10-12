@@ -164,42 +164,55 @@ def get_lemma(sent, i):
     return sent[i][2]
 
 
-def word2features(sent, i, words_before, words_after, extract_func):
+def get_next_index(sent, ci, skip_punct, move):
+    while True:
+        ci += move
+        if ci < 0 or ci >= len(sent):
+            break
+        if skip_punct and get_word(sent, ci) in string.punctuation:
+            continue
+        return ci
+    return -1
+
+
+def word2features(sent, i, params, extract_func):
+    words_before = params["words_before"]
+    words_after = params["words_after"]
+    skip_punct = params["skip_punct"]
     try:
         w, le = get_word(sent, i), get_lemma(sent, i)
         features = dict()
         features.update(extract_func(w, '', le))
-        if i > 0:
-            if words_before > 0:
-                w, le = get_word(sent, i - 1), get_lemma(sent, i - 1)
-                features.update(extract_func(w, '-1:', le))
-        else:
+        if i == 0:
             features['BOS'] = True
-
-        for ib in range(2, words_before + 1):
-            if (i - ib) >= 0:
-                w, le = get_word(sent, i - ib), get_lemma(sent, i - ib)
-                features.update(extract_func(w, '-{}:'.format(ib), le))
-
-        if i < len(sent) - 1:
-            if words_after > 0:
-                w, le = get_word(sent, i + 1), get_lemma(sent, i + 1)
-                features.update(extract_func(w, '+1:', le))
-        else:
+        if i == len(sent) - 1:
             features['EOS'] = True
 
-        for ia in range(2, words_after + 1):
-            if (i + ia) < len(sent):
-                w, le = get_word(sent, i + ia), get_lemma(sent, i + ia)
+        ci = i
+        for ib in range(1, words_before + 1):
+            ci = get_next_index(sent, ci, skip_punct, -1)
+            if ci > -1:
+                w, le = get_word(sent, ci), get_lemma(sent, ci)
+                features.update(extract_func(w, '-{}:'.format(ib), le))
+            else:
+                break
+
+        ci = i
+        for ia in range(1, words_after + 1):
+            ci = get_next_index(sent, ci, skip_punct, 1)
+            if ci > -1:
+                w, le = get_word(sent, ci), get_lemma(sent, ci)
                 features.update(extract_func(w, '+{}:'.format(ia), le))
+            else:
+                break
     except BaseException as err:
         raise Exception("Word: {}, lemma: {}, err: {}".format(w, le, err))
     return features
 
 
-def sent2features(sent, words_before=2, words_after=2, method="get_word_feat"):
-    f = globals()[method]
-    return [word2features(sent, i, words_before, words_after, f) for i in range(len(sent))]
+def sent2features(sent, params):
+    f = globals()[params["method"]]
+    return [word2features(sent, i, params, f) for i in range(len(sent))]
 
 
 def sent2labels(sent):

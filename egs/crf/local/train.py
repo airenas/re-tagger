@@ -18,7 +18,9 @@ def main(argv):
     parser.add_argument("--out", nargs='?', required=True, help="Model output file")
     parser.add_argument("--f_before", nargs='?', default=2, help="How many words use for features")
     parser.add_argument("--f_after", nargs='?', default=2, help="How many words use for features after")
-    parser.add_argument("--f_func", nargs='?', default="get_word_feat", help="Features function")
+    parser.add_argument("--f_func", nargs='?', default="feat_word_v1", help="Features function")
+    parser.add_argument("--f_skip_punct", default=False, action=argparse.BooleanOptionalAction,
+                        help="Skip punctuation in features")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -27,10 +29,14 @@ def main(argv):
     data['train'] = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
 
     print(data['train'], sep='\n\n')
-    logger.info("Features: [-{},w,{}], func: {}".format(args.f_before, args.f_after, args.f_func))
+    logger.info(
+        "Features: [-{},w,{}], func: {}, skip punct: {}".format(args.f_before, args.f_after, args.f_func,
+                                                                args.f_skip_punct))
     logger.info("preparing data")
     train_sents = format_data(data['train'])
-    x_train = [sent2features(s, words_before=int(args.f_before), words_after=int(args.f_after), method=args.f_func) for s in train_sents]
+    params = {"words_before": int(args.f_before), "words_after": int(args.f_after), "method": args.f_func,
+              "skip_punct": args.f_skip_punct}
+    x_train = [sent2features(s, params=params) for s in train_sents]
     y_train = [sent2labels(s) for s in train_sents]
     print(x_train[0][:], sep='\n\n')
 
