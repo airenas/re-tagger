@@ -1,46 +1,17 @@
 import argparse
 import csv
-import math
 import sys
 
 import pandas as pd
 import tensorflow as tf
 from tensorflow_addons.text import CRFModelWrapper
-from tqdm import tqdm
 
+from egs.bilstm_crf.local.format_data import format_data, ending
 from src.utils.logger import logger
 
 
-def format_data(csv_data, tag_to_index, max_len):
-    pos_id = 9
-    w_prev = 0
-    res = []
-    words, tags, sl, pw = [], [], 0, ""
-    with tqdm(total=len(csv_data), desc="prepare data") as pbar:
-        for i in range(len(csv_data)):
-            pbar.update(1)
-            w_num = csv_data.iloc[i, 0]
-            if math.isnan(w_num):
-                continue
-            if (w_num == 1.0 or w_num < w_prev) and len(words) > 0:
-                res.append({"tokens": words, "tags": [tag_to_index[t] for t in tags]})
-                words, tags, sl = [], [], 0
-            # split if very long sentence
-            if sl > max_len and pw == ',':
-                res.append({"tokens": words, "tags": [tag_to_index[t] for t in tags]})
-                words, tags, sl = [], [], 0
-            pw = csv_data.iloc[i, 1]
-            words.append(pw)
-            tags.append(csv_data.iloc[i, pos_id])
-            sl += 1
-            w_prev = w_num
-    if len(words) > 0:
-        res.append({"tokens": words, "tags": [tag_to_index[t] for t in tags]})
-    return res
-
-
 def main(argv):
-    parser = argparse.ArgumentParser(description="Trains bilstm-crf model",
+    parser = argparse.ArgumentParser(description="Trains bilstm_crf model",
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
@@ -70,7 +41,7 @@ def main(argv):
     logger.info("tags count {}".format(len(tags)))
     tag_to_index = {w: i for i, w in enumerate(tags)}
     logger.info("preparing data")
-    data_train = format_data(data, tag_to_index, 100)
+    data_train = format_data(data)
     # Model architecture
     num_tags = len(tags)
     embedding = 150
@@ -96,31 +67,31 @@ def main(argv):
     # model.build(input_shape=[(None, 20), (None, 20)])
     # model.summary()
 
-    train_tokens = tf.ragged.constant(words)
-    # train_tokens = tf.map_fn(tf.strings.lower, train_tokens)
     lookup_layer = tf.keras.layers.StringLookup(max_tokens=len(words), oov_token="[UNK]", mask_token="[MASK]")
-    lookup_layer.adapt(train_tokens)
+    lookup_layer.adapt(tf.ragged.constant(words))
     e_lookup_layer = tf.keras.layers.StringLookup(max_tokens=len(ends), oov_token="[UNK]", mask_token="[MASK]")
     e_lookup_layer.adapt(tf.ragged.constant(ends))
+    t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0)
 
-    print(len(lookup_layer.get_vocabulary()))
-    print(lookup_layer.get_vocabulary()[:10])
-
-    print(len(e_lookup_layer.get_vocabulary()))
-    print(e_lookup_layer.get_vocabulary()[:10])
+    logger.info(
+        "Words: {}, first 10: {}".format(len(lookup_layer.get_vocabulary()), lookup_layer.get_vocabulary()[:10]))
+    logger.info(
+        "Ends: {}, first 10: {}".format(len(e_lookup_layer.get_vocabulary()), e_lookup_layer.get_vocabulary()[:10]))
+    logger.info(
+        "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
 
     def create_data_generator(dataset):
         def data_generator():
             for item in dataset:
                 # print(len(item['tokens']))
-                yield item['tokens'], [str(w[-4:]).lower() for w in item['tokens']], item['tags']
+                yield item['tokens'], [ending(w) for w in item['tokens']], item['tags']
 
         return data_generator
 
     data_signature = (
         tf.TensorSpec(shape=(None,), dtype=tf.string),
         tf.TensorSpec(shape=(None,), dtype=tf.string),
-        tf.TensorSpec(shape=(None,), dtype=tf.int32)
+        tf.TensorSpec(shape=(None,), dtype=tf.string)
     )
 
     train_data = tf.data.Dataset.from_generator(
@@ -128,20 +99,13 @@ def main(argv):
         output_signature=data_signature
     )
 
-    def dataset_preprocess(tokens, ends, tag_ids):
-        preprocessed_tokens = preprocess_tokens(tokens)
+    def dataset_preprocess(tokens, _ends, _tags):
+        r_tokens = lookup_layer(tokens)
+        r_tags = t_lookup_layer(_tags)
         if use_ends:
-            e_preprocessed_tokens = preprocess_e_tokens(ends)
-            return (preprocessed_tokens, e_preprocessed_tokens), tag_ids
-        return preprocessed_tokens, tag_ids
-
-    def preprocess_tokens(tokens):
-        # tokens = tf.strings.lower(tokens)
-        return lookup_layer(tokens)
-
-    def preprocess_e_tokens(tokens):
-        # tokens = tf.strings.lower(tokens)
-        return e_lookup_layer(tokens)
+            r_ends = e_lookup_layer(_ends)
+            return (r_tokens, r_ends), r_tags
+        return r_tokens, r_tags
 
     # With `padded_batch()`, each batch may have different length
     # shape: (batch_size, None)
