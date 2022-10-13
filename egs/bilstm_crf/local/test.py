@@ -78,7 +78,7 @@ def main(argv):
                 # print("raw outputs: ", outputs)
                 # print("prediction: ", prediction)
                 for i, w in enumerate(tokens):
-                    print("{}\t{}".format(w, prediction[i]), file=f)
+                    print("{}\t{}".format(w, str(prediction[i].numpy(), "utf-8")), file=f)
 
     logger.info("Done")
 
