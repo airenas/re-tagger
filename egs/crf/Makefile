@@ -31,6 +31,9 @@ ${out_dir}/train_fl.txt: ${out_dir}/train_f.txt ${out_dir}/train_lemma.txt
 ${out_dir}/test_fl.txt: ${out_dir}/test_f.txt ${out_dir}/test_lemma.txt
 	$(python_cmd) local/join_lemma.py --input ${out_dir}/test_f.txt --lemmas ${out_dir}/test_lemma.txt > $@_
 	mv $@_ $@
+${out_dir}/%_wanted.txt: ${out_dir}/%_f.txt
+	$(python_cmd) ../test_data/local/to_plain.py --input $^ > $@_
+	mv $@_ $@	
 ############################################
 train: ${out_dir}/model.crf
 ${out_dir}/model.crf: ${out_dir}/train_fl.txt
@@ -60,7 +63,11 @@ ${out_dir}/test_final_calc.txt: ${out_dir}/test_pred_restore.txt ${out_dir}/test
 ${out_dir}/train_final_calc.txt: ${out_dir}/train_pred_restore.txt ${out_dir}/train_plain.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/train_plain.txt --f2 ${out_dir}/train_pred_restore.txt > $@_
 	mv $@_ $@
+${out_dir}/%_pred_calc.txt: ${out_dir}/%_pred.txt ${out_dir}/%_wanted.txt
+	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/$*_wanted.txt --f2 ${out_dir}/$*_pred.txt > $@_
+	mv $@_ $@	
 calc/final: clean/test ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
+calc/pred: clean/test ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt
 ############################################
 build: test/train test/test
 .PHONY: build
@@ -70,5 +77,7 @@ clean:
 .PHONY: clean
 clean/test:
 	rm -f ${out_dir}/test_final_calc.txt
+clean/pred:
+	rm -f ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt	
 .PHONY: clean/test
 .EXPORT_ALL_VARIABLES:
