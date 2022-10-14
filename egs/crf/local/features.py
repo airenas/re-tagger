@@ -44,6 +44,7 @@ def feat_word_v1(word, prefix, lemma):
         res = {
             prefix + 'word': word,
             prefix + 'len(word)': len(word),
+            prefix + 'word[:4]': wl[:4],
             prefix + 'word[-4:]': str(wl[-4:]),
             prefix + 'word[-3:]': str(wl[-3:]),
             prefix + 'word[-2:]': str(wl[-2:]),
