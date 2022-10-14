@@ -5,10 +5,6 @@ from src.utils.conllu import ConlluReader
 from src.utils.logger import logger
 
 
-def lemmas(l, w):
-    return l.get(w)
-
-
 def main(argv):
     parser = argparse.ArgumentParser(description="Prepares plain result file with word\ttag",
                                      epilog="E.g. " + sys.argv[0] + "",

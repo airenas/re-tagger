@@ -1,6 +1,13 @@
 import sys
 
 
+def extract_tag(l):
+    v = l.partition("Multext=")
+    if v[1]:
+        return v[2]
+    return v[0]
+
+
 class Connlu:
     def __init__(self):
         self.lines = []
@@ -15,8 +22,9 @@ class Connlu:
         return map(lambda l: (l.split("\t")[1]), filter(lambda l: (not l.startswith('#')), self.lines))
 
     def tags(self):
-        return map(lambda l: (l.partition("Multext=")[2]),
-            map(lambda l: (l.split("\t")[9]), filter(lambda l: (not l.startswith('#')), self.lines)))
+        return map(lambda l: extract_tag(l),
+                   map(lambda l: (l.split("\t")[9]), filter(lambda l: (not l.startswith('#')), self.lines)))
+
 
 class ConlluReader:
     """An iterator that yields sentences (lists of str)."""
