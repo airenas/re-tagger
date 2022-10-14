@@ -1,6 +1,11 @@
 import math
 
+import numpy as np
+import tensorflow as tf
+from gensim.models.fasttext import load_facebook_vectors
 from tqdm import tqdm
+
+from src.utils.logger import logger
 
 
 def format_data(csv_data, max_len=60):
@@ -33,3 +38,19 @@ def format_data(csv_data, max_len=60):
 
 def ending(w):
     return str(w[-4:]).lower()
+
+
+def prepare_fasttext_matrix_emb_layer(ft_model_file, words):
+    logger.info("loading {}".format(ft_model_file))
+    ft_model = load_facebook_vectors(ft_model_file)
+    logger.info("loaded {}".format(ft_model_file))
+    dim = ft_model[ft_model.index_to_key[0]].shape[0]
+    matrix = np.zeros((len(words), dim))
+    for i, w in enumerate(words):
+        ev = ft_model[w]
+        if ev is not None:
+            matrix[i] = ev
+        if w not in ft_model.key_to_index:
+            logger.warn("not found word '{}'".format(w))
+    return tf.keras.layers.Embedding(input_dim=matrix.shape[0],
+                                     output_dim=matrix.shape[1], weights=[matrix]), matrix.shape[1]
