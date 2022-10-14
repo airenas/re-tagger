@@ -13,7 +13,8 @@ cuda=
 ifeq ($(no_cuda),1)
 	cuda=CUDA_VISIBLE_DEVICES=""
 endif
-python_cmd=PYTHONPATH=../../ $(cuda) LOG_LEVEL=INFO python
+log?=INFO
+python_cmd=PYTHONPATH=../../ $(cuda) LOG_LEVEL=$(log) python
 ############################################
 ${out_dir}:
 	mkdir -p $@	

@@ -60,15 +60,26 @@ def main(argv):
     logger.info(
         "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
 
+    uc, uec = 0, 0
     with open(args.out, 'w') as f:
         with tqdm(total=len(data_test), desc="predicting") as pbar:
             for item in data_test:
                 pbar.update(1)
                 tokens = item['tokens']
+                # logger.info("tokens {}".format(tokens))
                 preprocessed_inputs = lookup_layer(tokens)
+                # logger.info("preprocessed_inputs {}".format(preprocessed_inputs))
+                for i, pi in enumerate(preprocessed_inputs):
+                    if pi == 1:
+                        uc += 1
+                        logger.debug("no word {}".format(tokens[i]))
                 inputs = tf.reshape(preprocessed_inputs, shape=[1, -1])
                 if args.use_ends:
                     preprocessed_ends = e_lookup_layer([ending(w) for w in tokens])
+                    for i, pi in enumerate(preprocessed_ends):
+                        if pi == 1:
+                            uec += 1
+                            logger.debug("no end '{}'".format(ending(tokens[i])))
                     ends = tf.reshape(preprocessed_ends, shape=[1, -1])
                     inputs = (inputs, ends)
                 outputs = model(inputs)
@@ -79,7 +90,7 @@ def main(argv):
                 # print("prediction: ", prediction)
                 for i, w in enumerate(tokens):
                     print("{}\t{}".format(w, str(prediction[i].numpy(), "utf-8")), file=f)
-
+    logger.info("Unknown w: {}, e: {}".format(uc, uec))
     logger.info("Done")
 
 

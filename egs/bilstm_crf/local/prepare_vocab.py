@@ -4,6 +4,7 @@ import sys
 
 import pandas as pd
 
+from egs.bilstm_crf.local.format_data import ending
 from src.utils.logger import logger
 
 
@@ -24,7 +25,7 @@ def main(argv):
     logger.info("tags count {}".format(len(tags)))
     words = list(data[1].unique())
     logger.info("words count: {}".format(len(words)))
-    ends = list(set([str(w[-4:]).lower() for w in words]))
+    ends = list(set([ending(w) for w in words]))
     logger.info("ends count: {}".format(len(ends)))
 
     logger.info("saving {}".format(args.out_v))

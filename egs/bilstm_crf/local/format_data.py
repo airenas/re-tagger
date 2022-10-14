@@ -37,7 +37,7 @@ def format_data(csv_data, max_len=60):
 
 
 def ending(w):
-    return str(w[-4:]).lower()
+    return str(w[-4:]).lower().strip()
 
 
 def prepare_fasttext_matrix_emb_layer(ft_model_file, words):
