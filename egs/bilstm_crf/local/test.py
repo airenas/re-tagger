@@ -4,9 +4,9 @@ import sys
 
 import pandas as pd
 import tensorflow as tf
-from tqdm import tqdm
 
 from egs.bilstm_crf.local.format_data import format_data, ending
+from egs.bilstm_crf.local.predict import predict
 from src.utils.logger import logger
 
 
@@ -61,35 +61,31 @@ def main(argv):
         "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
 
     uc, uec = 0, 0
+
+    def in_f(_tokens):
+        nonlocal uc, uec
+        out = lookup_layer(_tokens)
+        for i, pi in enumerate(out):
+            if pi == 1:
+                uc += 1
+                logger.debug("no word {}".format(_tokens[i]))
+        out = tf.reshape(out, shape=[1, -1])
+        if args.use_ends:
+            _ends = e_lookup_layer([ending(w) for w in _tokens])
+            for i, pi in enumerate(_ends):
+                if pi == 1:
+                    uec += 1
+                    logger.debug("no end '{}'".format(ending(_tokens[i])))
+            _ends = tf.reshape(_ends, shape=[1, -1])
+            out = (out, _ends)
+        return out
+
+    def out_f(_outputs):
+        return t_lookup_layer(_outputs)
+
     with open(args.out, 'w') as f:
-        with tqdm(total=len(data_test), desc="predicting") as pbar:
-            for item in data_test:
-                pbar.update(1)
-                tokens = item['tokens']
-                # logger.info("tokens {}".format(tokens))
-                preprocessed_inputs = lookup_layer(tokens)
-                # logger.info("preprocessed_inputs {}".format(preprocessed_inputs))
-                for i, pi in enumerate(preprocessed_inputs):
-                    if pi == 1:
-                        uc += 1
-                        logger.debug("no word {}".format(tokens[i]))
-                inputs = tf.reshape(preprocessed_inputs, shape=[1, -1])
-                if args.use_ends:
-                    preprocessed_ends = e_lookup_layer([ending(w) for w in tokens])
-                    for i, pi in enumerate(preprocessed_ends):
-                        if pi == 1:
-                            uec += 1
-                            logger.debug("no end '{}'".format(ending(tokens[i])))
-                    ends = tf.reshape(preprocessed_ends, shape=[1, -1])
-                    inputs = (inputs, ends)
-                outputs = model(inputs)
-                prediction = t_lookup_layer(outputs[0])
-                # print("raw tokens: ", tokens)
-                # print("raw inputs: ", inputs)
-                # print("raw outputs: ", outputs)
-                # print("prediction: ", prediction)
-                for i, w in enumerate(tokens):
-                    print("{}\t{}".format(w, str(prediction[i].numpy(), "utf-8")), file=f)
+        predict(model, f, data_test, in_func=in_f, out_func=out_f)
+
     logger.info("Unknown w: {}, e: {}".format(uc, uec))
     logger.info("Done")
 

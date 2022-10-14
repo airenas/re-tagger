@@ -4,9 +4,9 @@ import sys
 
 import pandas as pd
 import tensorflow as tf
-from tqdm import tqdm
 
 from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer
+from egs.bilstm_crf.local.predict import predict
 from src.utils.logger import logger
 
 
@@ -51,21 +51,15 @@ def main(argv):
     logger.info(
         "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
 
+    def in_f(_tokens):
+        out = lookup_layer(_tokens)
+        return embeddings(tf.reshape(out, shape=[1, -1]))
+
+    def out_f(_outputs):
+        return t_lookup_layer(_outputs)
+
     with open(args.out, 'w') as f:
-        with tqdm(total=len(data_test), desc="predicting") as pbar:
-            for item in data_test:
-                pbar.update(1)
-                tokens = item['tokens']
-                preprocessed_inputs = lookup_layer(tokens)
-                inputs = embeddings(tf.reshape(preprocessed_inputs, shape=[1, -1]))
-                outputs = model(inputs)
-                prediction = t_lookup_layer(outputs[0])
-                # print("raw tokens: ", tokens)
-                # print("raw inputs: ", inputs)
-                # print("raw outputs: ", outputs)
-                # print("prediction: ", prediction)
-                for i, w in enumerate(tokens):
-                    print("{}\t{}".format(w, str(prediction[i].numpy(), "utf-8")), file=f)
+        predict(model, f, data_test, in_func=in_f, out_func=out_f)
 
     logger.info("Done")
 

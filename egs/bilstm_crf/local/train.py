@@ -45,7 +45,7 @@ def main(argv):
     # Model architecture
     num_tags = len(tags)
     embedding = 150
-    hidden = 100
+    hidden = 200
     batch_size = 32
 
     w_input = tf.keras.layers.Input(shape=(None,))
@@ -64,7 +64,7 @@ def main(argv):
     m1 = tf.keras.Model(input, output)
     m1.summary()
     model = CRFModelWrapper(m1, num_tags)
-    model.compile(optimizer=tf.keras.optimizers.Adam(0.02))
+    model.compile(optimizer=tf.keras.optimizers.Adam())
     # model.build(input_shape=[(None, 20), (None, 20)])
     # model.summary()
 

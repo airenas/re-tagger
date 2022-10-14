@@ -35,7 +35,7 @@ def main(argv):
     data_train = format_data(data)
     # Model architecture
     num_tags = len(tags)
-    hidden = 300
+    hidden = 200
     batch_size = 32
 
     words = list(data[1].unique())
@@ -46,14 +46,12 @@ def main(argv):
     output = input
     output = tf.keras.layers.Bidirectional(
         tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1))(output)
-    output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1)(output)
+    # output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1)(output)
     # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(20, activation="relu"))(output)
     m1 = tf.keras.Model(input, output)
     m1.summary()
     model = CRFModelWrapper(m1, num_tags)
-    model.compile(optimizer=tf.keras.optimizers.Adam(0.02))
-    # model.build(input_shape=[(None, 20), (None, 20)])
-    # model.summary()
+    model.compile(optimizer=tf.keras.optimizers.Adam())
 
     lookup_layer = tf.keras.layers.StringLookup(vocabulary=words, num_oov_indices=0)
     t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0)
@@ -88,8 +86,6 @@ def main(argv):
         r_tags = t_lookup_layer(_tags)
         return r_tokens, r_tags
 
-    # With `padded_batch()`, each batch may have different length
-    # shape: (batch_size, None)
     train_dataset = (
         train_data.map(dataset_preprocess)
             .padded_batch(batch_size=batch_size)
@@ -104,7 +100,7 @@ def main(argv):
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3, verbose=1,
                                                   restore_best_weights=True, min_delta=0)
 
-    model.fit(train_dataset, epochs=25, verbose=1, callbacks=[])
+    model.fit(train_dataset, epochs=15, verbose=1, callbacks=[])
     model.summary(150)
     logger.info('Saving tf model ...')
     tf.keras.models.save_model(model, args.out)

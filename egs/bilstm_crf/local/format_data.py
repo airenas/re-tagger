@@ -51,6 +51,6 @@ def prepare_fasttext_matrix_emb_layer(ft_model_file, words):
         if ev is not None:
             matrix[i] = ev
         if w not in ft_model.key_to_index:
-            logger.warn("not found word '{}'".format(w))
+            logger.debug("not found word '{}'".format(w))
     return tf.keras.layers.Embedding(input_dim=matrix.shape[0],
                                      output_dim=matrix.shape[1], weights=[matrix]), matrix.shape[1]
