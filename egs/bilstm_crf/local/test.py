@@ -6,6 +6,7 @@ import pandas as pd
 import tensorflow as tf
 
 from egs.bilstm_crf.local.format_data import format_data, ending
+from egs.bilstm_crf.local.load import load_vocab
 from egs.bilstm_crf.local.predict import predict
 from src.utils.logger import logger
 
@@ -33,32 +34,20 @@ def main(argv):
     data = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
     logger.info("sample data")
     print(data.head(10), sep='\n\n')
-    logger.info("loading vocab {}".format(args.in_v))
-    with open(args.in_v, 'r') as f:
-        words = [w.strip() for w in f]
-    logger.info("words count: {}".format(len(words)))
-    logger.info("loading ends {}".format(args.in_v + '.end'))
-    with open(args.in_v + '.end', 'r') as f:
-        ends = [w.strip() for w in f]
-    logger.info("ends count: {}".format(len(ends)))
+
+    lookup_layer = load_vocab(args.in_v, "words")
+    e_lookup_layer = load_vocab(args.in_v + '.end', "endings")
+
     logger.info("loading tags {}".format(args.in_t))
     with open(args.in_t, 'r') as f:
         tags = [w.strip() for w in f]
     logger.info("tags count {}".format(len(tags)))
-    logger.info("preparing data")
-    data_test = format_data(data)
-
-    lookup_layer = tf.keras.layers.StringLookup(max_tokens=len(words), oov_token="[UNK]", mask_token="[MASK]")
-    lookup_layer.adapt(tf.ragged.constant(words))
-    e_lookup_layer = tf.keras.layers.StringLookup(max_tokens=len(ends), oov_token="[UNK]", mask_token="[MASK]")
-    e_lookup_layer.adapt(tf.ragged.constant(ends))
     t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0, invert=True)
     logger.info(
-        "Words: {}, first 10: {}".format(len(lookup_layer.get_vocabulary()), lookup_layer.get_vocabulary()[:10]))
-    logger.info(
-        "Ends: {}, first 10: {}".format(len(e_lookup_layer.get_vocabulary()), e_lookup_layer.get_vocabulary()[:10]))
-    logger.info(
         "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
+
+    logger.info("preparing data")
+    data_test = format_data(data)
 
     uc, uec = 0, 0
 

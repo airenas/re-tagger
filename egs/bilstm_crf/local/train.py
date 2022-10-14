@@ -7,6 +7,7 @@ import tensorflow as tf
 from tensorflow_addons.text import CRFModelWrapper
 
 from egs.bilstm_crf.local.format_data import format_data, ending
+from egs.bilstm_crf.local.load import load_vocab
 from src.utils.logger import logger
 
 
@@ -27,21 +28,18 @@ def main(argv):
     data = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
     logger.info("sample data")
     print(data.head(10), sep='\n\n')
-    logger.info("loading vocab {}".format(args.in_v))
-    with open(args.in_v, 'r') as f:
-        words = [w.strip() for w in f]
-    logger.info("words count: {}".format(len(words)))
-    logger.info("loading ends {}".format(args.in_v + '.end'))
-    with open(args.in_v + '.end', 'r') as f:
-        ends = [w.strip() for w in f]
-    logger.info("ends count: {}".format(len(ends)))
+    lookup_layer = load_vocab(args.in_v, "words")
+    e_lookup_layer = load_vocab(args.in_v + ".end", "endings")
+
     logger.info("loading tags {}".format(args.in_t))
     with open(args.in_t, 'r') as f:
         tags = [w.strip() for w in f]
     logger.info("tags count {}".format(len(tags)))
-    tag_to_index = {w: i for i, w in enumerate(tags)}
+    t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0)
+
     logger.info("preparing data")
     data_train = format_data(data)
+
     # Model architecture
     num_tags = len(tags)
     embedding = 150
@@ -49,12 +47,14 @@ def main(argv):
     batch_size = 32
 
     w_input = tf.keras.layers.Input(shape=(None,))
-    w_output = tf.keras.layers.Embedding(input_dim=len(words) + 2, output_dim=embedding, mask_zero=True)(w_input)
+    w_output = tf.keras.layers.Embedding(input_dim=len(lookup_layer.get_vocabulary()), output_dim=embedding,
+                                         mask_zero=True)(w_input)
     input, output = w_input, w_output
     use_ends = args.use_ends
     if use_ends:
         e_input = tf.keras.layers.Input(shape=(None,))
-        e_output = tf.keras.layers.Embedding(input_dim=len(words) + 2, output_dim=50, mask_zero=True)(e_input)
+        e_output = tf.keras.layers.Embedding(input_dim=len(e_lookup_layer.get_vocabulary()), output_dim=50,
+                                             mask_zero=True)(e_input)
         input = [w_input, e_input]
         output = tf.keras.layers.concatenate([w_output, e_output])
     output = tf.keras.layers.Bidirectional(
@@ -65,19 +65,6 @@ def main(argv):
     m1.summary()
     model = CRFModelWrapper(m1, num_tags)
     model.compile(optimizer=tf.keras.optimizers.Adam())
-    # model.build(input_shape=[(None, 20), (None, 20)])
-    # model.summary()
-
-    lookup_layer = tf.keras.layers.StringLookup(max_tokens=len(words), oov_token="[UNK]", mask_token="[MASK]")
-    lookup_layer.adapt(tf.ragged.constant(words))
-    e_lookup_layer = tf.keras.layers.StringLookup(max_tokens=len(ends), oov_token="[UNK]", mask_token="[MASK]")
-    e_lookup_layer.adapt(tf.ragged.constant(ends))
-    t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0)
-
-    logger.info(
-        "Words: {}, first 10: {}".format(len(lookup_layer.get_vocabulary()), lookup_layer.get_vocabulary()[:10]))
-    logger.info(
-        "Ends: {}, first 10: {}".format(len(e_lookup_layer.get_vocabulary()), e_lookup_layer.get_vocabulary()[:10]))
     logger.info(
         "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
 
@@ -100,8 +87,8 @@ def main(argv):
         output_signature=data_signature
     )
 
-    def dataset_preprocess(tokens, _ends, _tags):
-        r_tokens = lookup_layer(tokens)
+    def dataset_preprocess(_tokens, _ends, _tags):
+        r_tokens = lookup_layer(_tokens)
         r_tags = t_lookup_layer(_tags)
         if use_ends:
             r_ends = e_lookup_layer(_ends)
