@@ -17,6 +17,7 @@ def main(argv):
     model = load_facebook_vectors(args.input)
     print("Loaded %s" % args.input, file=sys.stderr)
     print("Word %s" % args.word, file=sys.stderr)
+    print("Index %s" % model.key_to_index.get(args.word, -1), file=sys.stderr)
     vector = model[args.word]
     print("Vector {}".format(vector), file=sys.stderr)
     sims = model.most_similar(args.word, topn=10)
