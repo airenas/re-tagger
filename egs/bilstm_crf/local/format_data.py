@@ -46,11 +46,14 @@ def prepare_fasttext_matrix_emb_layer(ft_model_file, words):
     logger.info("loaded {}".format(ft_model_file))
     dim = ft_model[ft_model.index_to_key[0]].shape[0]
     matrix = np.zeros((len(words), dim))
+    unk = 0
     for i, w in enumerate(words):
         ev = ft_model[w]
         if ev is not None:
             matrix[i] = ev
         if w not in ft_model.key_to_index:
+            unk += 1
             logger.debug("not found word '{}'".format(w))
+    logger.info("Unknown words {} (of {})".format(unk, len(words)))
     return tf.keras.layers.Embedding(input_dim=matrix.shape[0],
                                      output_dim=matrix.shape[1], weights=[matrix]), matrix.shape[1]
