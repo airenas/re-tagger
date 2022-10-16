@@ -67,7 +67,7 @@ ${out_dir}/%_pred_calc.txt: ${out_dir}/%_pred.txt ${out_dir}/%_wanted.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/$*_wanted.txt --f2 ${out_dir}/$*_pred.txt > $@_
 	mv $@_ $@	
 calc/final: clean/test ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
-calc/pred: clean/test ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt
+calc/pred: clean/pred ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt
 ############################################
 build: test/train test/test
 .PHONY: build
@@ -76,7 +76,7 @@ clean:
 	rm -rf $(out_dir)
 .PHONY: clean
 clean/test:
-	rm -f ${out_dir}/test_final_calc.txt
+	rm -f ${out_dir}/test_final_calc.txt ${out_dir}/train_final_calc.txt
 clean/pred:
 	rm -f ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt	
 .PHONY: clean/test
