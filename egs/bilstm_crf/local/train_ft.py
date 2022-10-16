@@ -35,7 +35,7 @@ def main(argv):
     data_train = format_data(data)
     # Model architecture
     num_tags = len(tags)
-    hidden = 200
+    hidden = 300
     batch_size = 32
 
     words = list(data[1].unique())
@@ -100,7 +100,7 @@ def main(argv):
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3, verbose=1,
                                                   restore_best_weights=True, min_delta=0)
 
-    model.fit(train_dataset, epochs=15, verbose=1, callbacks=[])
+    model.fit(train_dataset, epochs=45, verbose=1, callbacks=[])
     model.summary(150)
     logger.info('Saving tf model ...')
     tf.keras.models.save_model(model, args.out)
