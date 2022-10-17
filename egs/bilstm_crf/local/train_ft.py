@@ -36,7 +36,7 @@ def main(argv):
     # Model architecture
     num_tags = len(tags)
     hidden = 300
-    batch_size = 32
+    batch_size = 16
 
     words = list(data[1].unique())
     logger.info("words count: {}".format(len(words)))

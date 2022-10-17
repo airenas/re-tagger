@@ -51,10 +51,10 @@ test/test: ${out_dir}/test_pred.txt
 ############################################
 ${out_dir}/%_pred.txt: ${model} ${out_dir}/%_f.txt
 ifeq ($(use_ft),1)
-	$(python_cmd) local/test_ft.py --input ${out_dir}/$*_f.txt --model ${model} \
+	$(python_cmd) local/test_ds_ft.py --input ${out_dir}/$*_f.txt --model ${model} \
 		--in_ft ${ft_model} --in_t ${out_dir}/tags --out $@_
 else
-	$(python_cmd) local/test.py --input ${out_dir}/$*_f.txt --model ${model} \
+	$(python_cmd) local/test_ds.py --input ${out_dir}/$*_f.txt --model ${model} \
 	    --in_v ${out_dir}/words --in_t ${out_dir}/tags $(nn_params) --out $@_
 endif
 	mv $@_ $@
