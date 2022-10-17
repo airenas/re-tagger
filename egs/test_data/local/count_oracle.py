@@ -35,6 +35,8 @@ def main(argv):
                 if len(w2) > 1:
                     w2t = w2[1].split(":")
                 if w1[0] != w2[0]:
+                    w1[0] = w1[0].replace("#", "_").strip()
+                if w1[0] != w2[0]:
                     raise Exception("problem at {}, '{}' != '{}'".format(wc, w1[0], w2[0]))
                 y_true.append(w1[1])
                 if w1[1] in w2t:
