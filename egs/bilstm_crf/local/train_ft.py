@@ -4,9 +4,12 @@ import sys
 
 import pandas as pd
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from tensorflow.python.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow_addons.text import CRFModelWrapper
 
-from egs.bilstm_crf.local.format_data import format_data, ending, prepare_fasttext_matrix_emb_layer
+from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer
+from egs.bilstm_crf.local.prepare_data import make_train_dataset
 from src.utils.logger import logger
 
 
@@ -32,7 +35,10 @@ def main(argv):
         tags = [w.strip() for w in f]
     logger.info("tags count {}".format(len(tags)))
     logger.info("preparing data")
-    data_train = format_data(data)
+    data_sent = format_data(data)
+    data_train, data_val = train_test_split(data_sent, test_size=0.1, shuffle=True, random_state=1)
+    logger.info("Data len train: {}".format(len(data_train)))
+    logger.info("Data len val  : {}".format(len(data_val)))
     # Model architecture
     num_tags = len(tags)
     hidden = 300
@@ -61,46 +67,24 @@ def main(argv):
     logger.info(
         "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
 
-    def create_data_generator(dataset):
-        def data_generator():
-            for item in dataset:
-                # print(len(item['tokens']))
-                yield item['tokens'], [ending(w) for w in item['tokens']], item['tags']
-
-        return data_generator
-
-    data_signature = (
-        tf.TensorSpec(shape=(None,), dtype=tf.string),
-        tf.TensorSpec(shape=(None,), dtype=tf.string),
-        tf.TensorSpec(shape=(None,), dtype=tf.string)
-    )
-
-    train_data = tf.data.Dataset.from_generator(
-        create_data_generator(data_train),
-        output_signature=data_signature
-    )
-
     def dataset_preprocess(tokens, _ends, _tags):
         r_tokens = lookup_layer(tokens)
         r_tokens = embeddings(r_tokens)
         r_tags = t_lookup_layer(_tags)
         return r_tokens, r_tags
 
-    train_dataset = (
-        train_data.map(dataset_preprocess)
-            .padded_batch(batch_size=batch_size)
-    )
+    train_ds = (make_train_dataset(data_train).map(dataset_preprocess).padded_batch(batch_size=batch_size))
+    val_ds = (make_train_dataset(data_val).map(dataset_preprocess).padded_batch(batch_size=batch_size))
 
-    # checkpointer = ModelCheckpoint(filepath='model.tf',
-    #                                verbose=2,
-    #                                mode='auto',
-    #                                save_best_only=True,
-    #                                monitor='crf_loss')
+    checkpoint = ModelCheckpoint(filepath=args.out + ".tmp",
+                                 monitor='loss',
+                                 verbose=1,
+                                 save_best_only=False,
+                                 mode='min',
+                                 period=5)
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
 
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3, verbose=1,
-                                                  restore_best_weights=True, min_delta=0)
-
-    model.fit(train_dataset, epochs=45, verbose=1, callbacks=[])
+    model.fit(train_ds, validation_data=val_ds, epochs=45, verbose=1, callbacks=[checkpoint, es])
     model.summary(150)
     logger.info('Saving tf model ...')
     tf.keras.models.save_model(model, args.out)
