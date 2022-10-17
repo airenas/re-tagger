@@ -13,6 +13,8 @@ cuda=
 ifeq ($(no_cuda),1)
 	cuda=CUDA_VISIBLE_DEVICES=""
 endif
+batch?=32
+hidden?=300
 log?=INFO
 python_cmd=PYTHONPATH=../../ $(cuda) LOG_LEVEL=$(log) python
 ############################################
@@ -34,10 +36,11 @@ train: ${model}
 ############################################
 ${model}: ${out_dir}/train_f.txt ${out_dir}/words ${out_dir}/tags
 ifeq ($(use_ft),1)
-	$(python_cmd) local/train_ft.py --input ${out_dir}/train_f.txt --in_ft ${ft_model} --in_t ${out_dir}/tags  --out $@
+	$(python_cmd) local/train_ft.py --input ${out_dir}/train_f.txt --in_ft ${ft_model} --in_t ${out_dir}/tags  \
+	    --out $@ --batch $(batch) --hidden $(hidden)
 else
 	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --in_v ${out_dir}/words --in_t ${out_dir}/tags \
-		$(nn_params) --out $@
+		$(nn_params) --out $@ --batch $(batch) --hidden $(hidden)
 endif
 ############################################
 ${out_dir}/words ${out_dir}/tags: ${out_dir}/train_f.txt

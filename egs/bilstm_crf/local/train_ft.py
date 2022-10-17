@@ -21,6 +21,8 @@ def main(argv):
     parser.add_argument("--in_ft", nargs='?', required=True, help="FastText model")
     parser.add_argument("--in_t", nargs='?', required=True, help="Input tags vocab")
     parser.add_argument("--out", nargs='?', required=True, help="Model output file")
+    parser.add_argument("--hidden", nargs='?', default=300, help="Hidden layer size")
+    parser.add_argument("--batch", nargs='?', default=32, help="Batch size")
     parser.add_argument("--use_ends", default=False, action=argparse.BooleanOptionalAction,
                         help="Use endings")
     args = parser.parse_args(args=argv)
@@ -41,8 +43,10 @@ def main(argv):
     logger.info("Data len val  : {}".format(len(data_val)))
     # Model architecture
     num_tags = len(tags)
-    hidden = 300
-    batch_size = 16
+    hidden = int(args.hidden)
+    batch_size = int(args.batch)
+    logger.info("Hidden      : {}".format(hidden))
+    logger.info("Batch size: : {}".format(batch_size))
 
     words = list(data[1].unique())
     logger.info("words count: {}".format(len(words)))
@@ -84,7 +88,7 @@ def main(argv):
                                  period=5)
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
 
-    model.fit(train_ds, validation_data=val_ds, epochs=45, verbose=1, callbacks=[checkpoint, es])
+    model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, callbacks=[checkpoint, es])
     model.summary(150)
     logger.info('Saving tf model ...')
     tf.keras.models.save_model(model, args.out)

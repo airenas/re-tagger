@@ -22,6 +22,8 @@ def main(argv):
     parser.add_argument("--in_v", nargs='?', required=True, help="Input vocab")
     parser.add_argument("--in_t", nargs='?', required=True, help="Input tags vocab")
     parser.add_argument("--out", nargs='?', required=True, help="Model output file")
+    parser.add_argument("--hidden", nargs='?', default=200, help="Hidden layer size")
+    parser.add_argument("--batch", nargs='?', default=32, help="Batch size")
     parser.add_argument("--use_ends", default=False, action=argparse.BooleanOptionalAction,
                         help="Use endings")
     args = parser.parse_args(args=argv)
@@ -49,8 +51,10 @@ def main(argv):
     # Model architecture
     num_tags = len(tags)
     embedding = 150
-    hidden = 200
-    batch_size = 32
+    hidden = int(args.hidden)
+    batch_size = int(args.batch)
+    logger.info("Hidden      : {}".format(hidden))
+    logger.info("Batch size: : {}".format(batch_size))
 
     w_input = tf.keras.layers.Input(shape=(None,))
     w_output = tf.keras.layers.Embedding(input_dim=len(lookup_layer.get_vocabulary()), output_dim=embedding,
@@ -91,7 +95,7 @@ def main(argv):
                                  save_best_only=False,
                                  mode='min',
                                  period=5)
-    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=3)
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
     model.fit(train_ds, validation_data=val_ds, epochs=15, verbose=1, callbacks=[checkpoint, es])
     model.summary(150)
     logger.info('Saving tf model ...')
