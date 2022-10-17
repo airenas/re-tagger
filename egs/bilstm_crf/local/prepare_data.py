@@ -22,3 +22,8 @@ def make_train_dataset(data):
         create_data_generator(data),
         output_signature=data_signature
     )
+
+
+def map_and_batch(ds, op, batch_size):
+    return ds.map(op, num_parallel_calls=tf.data.AUTOTUNE).padded_batch(batch_size=batch_size).prefetch(
+        tf.data.AUTOTUNE)

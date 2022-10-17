@@ -9,7 +9,7 @@ from tensorflow.python.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow_addons.text import CRFModelWrapper
 
 from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer
-from egs.bilstm_crf.local.prepare_data import make_train_dataset
+from egs.bilstm_crf.local.prepare_data import make_train_dataset, map_and_batch
 from src.utils.logger import logger
 
 
@@ -38,7 +38,7 @@ def main(argv):
     logger.info("tags count {}".format(len(tags)))
     logger.info("preparing data")
     data_sent = format_data(data)
-    data_train, data_val = train_test_split(data_sent, test_size=0.1, shuffle=True, random_state=1)
+    data_train, data_val = train_test_split(data_sent, test_size=0.05, shuffle=True, random_state=1)
     logger.info("Data len train: {}".format(len(data_train)))
     logger.info("Data len val  : {}".format(len(data_val)))
     # Model architecture
@@ -77,15 +77,15 @@ def main(argv):
         r_tags = t_lookup_layer(_tags)
         return r_tokens, r_tags
 
-    train_ds = (make_train_dataset(data_train).map(dataset_preprocess).padded_batch(batch_size=batch_size))
-    val_ds = (make_train_dataset(data_val).map(dataset_preprocess).padded_batch(batch_size=batch_size))
+    train_ds = map_and_batch(make_train_dataset(data_train), dataset_preprocess, batch_size)
+    val_ds = map_and_batch(make_train_dataset(data_val), dataset_preprocess, batch_size)
 
     checkpoint = ModelCheckpoint(filepath=args.out + "ep-{epoch:02d}",
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
                                  mode='min',
-                                 period=5)
+                                 period=4)
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
 
     model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, callbacks=[checkpoint, es])

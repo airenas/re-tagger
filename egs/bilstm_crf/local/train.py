@@ -10,7 +10,7 @@ from tensorflow_addons.text import CRFModelWrapper
 
 from egs.bilstm_crf.local.format_data import format_data
 from egs.bilstm_crf.local.load import load_vocab
-from egs.bilstm_crf.local.prepare_data import make_train_dataset
+from egs.bilstm_crf.local.prepare_data import make_train_dataset, map_and_batch
 from src.utils.logger import logger
 
 
@@ -86,8 +86,8 @@ def main(argv):
             return (r_tokens, r_ends), r_tags
         return r_tokens, r_tags
 
-    train_ds = (make_train_dataset(data_train).map(dataset_preprocess).padded_batch(batch_size=batch_size))
-    val_ds = (make_train_dataset(data_val).map(dataset_preprocess).padded_batch(batch_size=batch_size))
+    train_ds = map_and_batch(make_train_dataset(data_train), dataset_preprocess, batch_size)
+    val_ds = map_and_batch(make_train_dataset(data_val), dataset_preprocess, batch_size)
 
     checkpoint = ModelCheckpoint(filepath=args.out + ".tmp",
                                  monitor='loss',
