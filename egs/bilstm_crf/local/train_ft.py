@@ -80,10 +80,10 @@ def main(argv):
     train_ds = (make_train_dataset(data_train).map(dataset_preprocess).padded_batch(batch_size=batch_size))
     val_ds = (make_train_dataset(data_val).map(dataset_preprocess).padded_batch(batch_size=batch_size))
 
-    checkpoint = ModelCheckpoint(filepath=args.out + ".tmp",
-                                 monitor='loss',
+    checkpoint = ModelCheckpoint(filepath=args.out + "ep-{epoch:02d}",
+                                 monitor='val_loss',
                                  verbose=1,
-                                 save_best_only=False,
+                                 save_best_only=True,
                                  mode='min',
                                  period=5)
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
