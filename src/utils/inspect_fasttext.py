@@ -9,19 +9,27 @@ def main(argv):
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Model file")
-    parser.add_argument("--word", nargs='?', required=True, help="Word to inspect")
+    parser.add_argument("--word", nargs='?', required=False, help="Word to inspect")
     args = parser.parse_args(args=argv)
 
     print("Starting", file=sys.stderr)
 
     model = load_facebook_vectors(args.input)
     print("Loaded %s" % args.input, file=sys.stderr)
-    print("Word %s" % args.word, file=sys.stderr)
-    print("Index %s" % model.key_to_index.get(args.word, -1), file=sys.stderr)
-    vector = model[args.word]
-    print("Vector {}".format(vector), file=sys.stderr)
-    sims = model.most_similar(args.word, topn=10)
-    print("Similar {}".format(sims), file=sys.stderr)
+    words = sys.stdin
+    if args.word:
+        print("Word %s" % args.word, file=sys.stderr)
+        words = [args.word]
+    else:
+        print("Use stdin - enter words", file=sys.stderr)
+    for word in words:
+        word = word.strip()
+        print("Word %s" % word, file=sys.stderr)
+        print("Index %s" % model.key_to_index.get(word, -1), file=sys.stderr)
+        vector = model[word]
+        print("Vector {}".format(vector), file=sys.stderr)
+        sims = model.most_similar(word, topn=10)
+        print("Similars 10 {}".format(sims), file=sys.stderr)
 
     print("Done", file=sys.stderr)
 

@@ -61,6 +61,7 @@ else
 	    --in_v ${out_dir}/words --in_t ${out_dir}/tags $(nn_params) --out $@_
 endif
 	mv $@_ $@
+.PRECIOUS: ${out_dir}/train_pred.txt ${out_dir}/test_pred.txt
 ############################################
 ${out_dir}/%_pred_restore.txt: ${out_dir}/%_pred.txt ${out_dir}/%_lemma_tags.txt ${out_dir}/tags.txt
 	$(python_cmd) ../crf/local/restore.py --lemmas ${out_dir}/$*_lemma_tags.txt --pred ${out_dir}/$*_pred.txt \
