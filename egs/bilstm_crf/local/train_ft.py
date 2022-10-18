@@ -27,6 +27,10 @@ def main(argv):
                         help="Use endings")
     args = parser.parse_args(args=argv)
 
+    # try make results reproducible, but does not work for GPU
+    # https://stackoverflow.com/questions/51249811/reproducible-results-in-tensorflow-with-tf-set-random-seed
+    tf.random.set_seed(1)
+
     logger.info("Starting")
     logger.info("loading data {}".format(args.input))
     data = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
@@ -57,7 +61,7 @@ def main(argv):
     output = tf.keras.layers.Bidirectional(
         tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1))(output)
     # output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1)(output)
-    # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(20, activation="relu"))(output)
+    # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(hidden, activation="relu"))(output)
     m1 = tf.keras.Model(input, output)
     m1.summary()
     model = CRFModelWrapper(m1, num_tags)
@@ -80,12 +84,12 @@ def main(argv):
     train_ds = map_and_batch(make_train_dataset(data_train), dataset_preprocess, batch_size)
     val_ds = map_and_batch(make_train_dataset(data_val), dataset_preprocess, batch_size)
 
-    checkpoint = ModelCheckpoint(filepath=args.out + "ep-{epoch:02d}",
+    checkpoint = ModelCheckpoint(filepath=args.out + "-val",  # "ep-{epoch:02d}",
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
                                  mode='min',
-                                 period=4)
+                                 period=1)
     es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
 
     model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, callbacks=[checkpoint, es])
