@@ -5,11 +5,11 @@ take_n?=100000000000000
 ############################################
 data_dir?=../../data
 out_dir?=data
-model=${out_dir}/models/morph/1
+model?=${out_dir}/models/morph/1
 python_dir=${CURDIR}/../../src/utils
-nn_params=--use_ends
-use_ft=1
-ft_model=../../data/delfi_cbow.bin
+nn_params?=--use_ends
+use_ft?=1
+ft_model?=../../data/delfi_cbow.bin
 cuda=
 ifeq ($(no_cuda),1)
 	cuda=CUDA_VISIBLE_DEVICES=""
