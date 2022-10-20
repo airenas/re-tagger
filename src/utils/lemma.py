@@ -44,8 +44,14 @@ def fix(txt):
     return txt.replace("à", "a")
 
 
+def fix_empty_tag(txt, res):
+    if len(txt) == 1 and txt.isalpha():
+        return "Xr"
+    return "X-"
+
+
 class Lemmatizer:
-    def __init__(self, url: str):
+    def __init__(self, url: str, clitics_file: str):
         logger.info("Init lemma at: %s" % (url))
         self.__url = url
         self.cache = dict()
@@ -57,20 +63,31 @@ class Lemmatizer:
                     line = line.strip()
                     wrds = line.split("\t")
                     self.cache[wrds[0]] = wrds[1]
+        with open(clitics_file, 'r') as file:
+            for line in file:
+                line = line.strip()
+                wrds = line.split("\t")
+                self.cache[wrds[0]] = wrds[1]
 
     def get(self, txt: str) -> str:
         if txt.isdigit():
             return ":M----d-"
         if txt in self.cache:
             return self.cache[txt]
+        if " " in txt:
+            if txt.lower() in self.cache:
+                return self.cache[txt.lower()]
+            return ":X-"
         try:
             res = self.call_service(txt)
+            if not res:
+                res = fix_empty_tag(txt, res)
             self.cache[txt] = res
             if res:
                 self.fd.write("{}\t{}\n".format(txt, res))
         except BaseException as err:
             logger.error(err)
-            res = ":Xf"
+            res = ":X-"
         # if not res:
         #     logger.warn("no lemma '%s'" % txt)
         return res

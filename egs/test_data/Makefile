@@ -31,11 +31,14 @@ ${out_dir}/train_v0.txt: ${out_dir}/test_dad.txt ${out_dir}/all.txt
 	$(python_cmd) local/split.py --input ${out_dir}/all.txt --test_file ${out_dir}/test_dad.txt --return_train > $@_
 	mv $@_ $@
 ############################################
-${out_dir}/test_lemma.txt: ${out_dir}/test.txt
-	$(python_cmd) local/lemmatize.py --input $^ > $@_
+${out_dir}/test_lemma.txt: ${out_dir}/test.txt ${out_dir}/clitics_lemma.txt
+	$(python_cmd) local/lemmatize.py --input ${out_dir}/test.txt --clitics ${out_dir}/clitics_lemma.txt > $@_
 	mv $@_ $@
-${out_dir}/train_lemma.txt: ${out_dir}/train.txt
-	$(python_cmd) local/lemmatize.py --input $^ > $@_
+${out_dir}/clitics_lemma.txt: ${out_dir}/train.txt
+	$(python_cmd) local/find_clitics.py --input $^ > $@_
+	mv $@_ $@	
+${out_dir}/train_lemma.txt: ${out_dir}/train.txt ${out_dir}/clitics_lemma.txt
+	$(python_cmd) local/lemmatize.py --input ${out_dir}/train.txt --clitics ${out_dir}/clitics_lemma.txt > $@_
 	mv $@_ $@
 ${out_dir}/test_morph.txt: ${out_dir}/test.txt
 	$(python_cmd) local/morphize.py --input $^ > $@_
@@ -56,11 +59,11 @@ ${out_dir}/tags.txt: ${out_dir}/train_plain.txt
 	$(python_cmd) local/count_tags.py --input $^ > $@_
 	mv $@_ $@
 ############################################
-start/lema:
+start/lemma:
 	docker run -it -e SECRET=$(LEMA_SECRET) -e LEMA_TYPE=hunspell \
 		-e LEMA_HUNSPELL_SKIP_OFFENSIVE=false \
 		-p 8001:8000 airenas/lema:1.4.1212		
-.PHONY: start/lema
+.PHONY: start/lemma
 start/morph:
 	docker run -it \
 		-p 8002:8090 semantikadocker.vdu.lt/v2/morph:0.2

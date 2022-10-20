@@ -18,6 +18,7 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
     parser.add_argument("--url", nargs='?', default="http://localhost:8001", help="Lemmatizer url")
+    parser.add_argument("--clitics", nargs='?', required=True, help="Clitics lemmas file")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -25,7 +26,7 @@ def main(argv):
     # read test sentences
     sc, wc = 0, 0
     with ConlluReader(args.input) as cr:
-        with Lemmatizer(args.url) as lemma:
+        with Lemmatizer(args.url, args.clitics) as lemma:
             with tqdm(desc="lemmatizing") as pbar:
                 for sent in cr:
                     sc += 1
