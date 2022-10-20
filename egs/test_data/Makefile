@@ -24,7 +24,7 @@ ${out_dir}/all.txt: ${out_dir}/extracted/.done
 ${out_dir}/test_dad.txt: ${data_dir}/ma_testai.csv | ${out_dir}/extracted
 	python local/csv_to_sentences.py --input $^ > $@_
 	mv $@_ $@
-${out_dir}/test.txt: ${out_dir}/test_dad.txt ${out_dir}/all.txt
+${out_dir}/test_v0.txt: ${out_dir}/test_dad.txt ${out_dir}/all.txt
 	$(python_cmd) local/split.py --input ${out_dir}/all.txt --test_file ${out_dir}/test_dad.txt > $@_
 	mv $@_ $@
 ${out_dir}/train_v0.txt: ${out_dir}/test_dad.txt ${out_dir}/all.txt
@@ -78,13 +78,10 @@ ${out_dir}/train_lemma_tags.txt: ${out_dir}/train_lemma.txt
 	$(python_cmd) local/to_tags.py --input $^ > $@_
 	mv $@_ $@
 ############################################
-${out_dir}/test_plain.txt: ${out_dir}/test.txt
-	$(python_cmd) local/to_plain.py --input $^ > $@_
-	mv $@_ $@
-${out_dir}/train.txt: ${out_dir}/train_v0.txt
+${out_dir}/%.txt: ${out_dir}/%_v0.txt
 	$(python_cmd) local/fix_data.py --input $^ > $@_
 	mv $@_ $@
-${out_dir}/train_plain.txt: ${out_dir}/train.txt
+${out_dir}/%_plain.txt: ${out_dir}/%.txt
 	$(python_cmd) local/to_plain.py --input $^ > $@_
 	mv $@_ $@
 ############################################
