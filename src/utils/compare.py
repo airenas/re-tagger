@@ -21,6 +21,26 @@ def not_important(w, t1, t2):
     return False
 
 
+def show_res(res):
+    footers = ["micro avg", "macro avg", "weighted avg"]
+    headers = ["precision", "recall", "f1-score", "support"]
+    longest_last_line_heading = "weighted avg"
+    name_width = max(len(cn) for cn in res.keys())
+    width = max(name_width, len(longest_last_line_heading), 2)
+    head_fmt = "{:>{width}s} " + " {:>9}" * len(headers)
+    report = head_fmt.format("", *headers, width=width)
+    report += "\n\n"
+    row_fmt = "{:>{width}s} " + " {:>9.{digits}f}" * 3 + " {:>9}\n"
+    for key, values in res.items():
+        if key not in footers:
+            report += row_fmt.format(key, *values.values(), width=width, digits=2)
+    report += "\n\n\n"
+    for key in footers:
+        report += row_fmt.format(key, *res[key].values(), width=width, digits=2)
+
+    return report
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description="Compares two files",
                                      epilog="E.g. " + sys.argv[0] + "",
@@ -87,9 +107,11 @@ def main(argv):
     logger.info("Acc not important: {}".format(accuracy_score(y_true, y_pred_not_imp)))
 
     sorted_labels = sorted(labels, key=lambda name: (name[1:], name[0]))
+    res = metrics.classification_report(y_true, y_pred, labels=sorted_labels, digits=3, zero_division=0,
+                                        output_dict=True)
+    res = dict(sorted(res.items(), key=lambda item: - (1.0 - item[1]['precision']) * item[1]['support']), )
     logger.info('Data set classification report: \n\n{}'
-           .format(metrics.classification_report(y_true, y_pred, labels=sorted_labels, digits=3,
-                                                 zero_division=0)))
+                .format(show_res(res)))
     logger.info("Done")
 
 
