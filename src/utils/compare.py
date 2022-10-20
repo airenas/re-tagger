@@ -41,6 +41,20 @@ def show_res(res):
     return report
 
 
+def show_compare_results(y_true, y_pred):
+    labels = set()
+    for la in y_true:
+        labels.add(la)
+    logger.info("Acc: {}".format(accuracy_score(y_true, y_pred)))
+    logger.info("F1 : {}".format(f1_score(y_true, y_pred, labels=list(labels), average='weighted', zero_division=0)))
+    sorted_labels = sorted(labels, key=lambda name: (name[1:], name[0]))
+    res = metrics.classification_report(y_true, y_pred, labels=sorted_labels, digits=3, zero_division=0,
+                                        output_dict=True)
+    res = dict(sorted(res.items(), key=lambda item: - (1.0 - item[1]['precision']) * item[1]['support']), )
+    logger.info('Data set classification report: \n\n{}'
+                .format(show_res(res)))
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description="Compares two files",
                                      epilog="E.g. " + sys.argv[0] + "",
@@ -99,19 +113,8 @@ def main(argv):
     logger.info("Results: all: {}, err: {}, {}, not important: {}".format(wc, errc, errc / wc, err_not_imp))
     if mwc > 0:
         logger.info("Results: multiple: {}, err: {}, {}".format(mwc, errmvc, errmvc / mwc))
-    logger.info("Acc: {}".format(accuracy_score(y_true, y_pred)))
-    labels = set()
-    for la in y_true:
-        labels.add(la)
-    logger.info("F1 : {}".format(f1_score(y_true, y_pred, labels=list(labels), average='weighted', zero_division=0)))
+    show_compare_results(y_true, y_pred)
     logger.info("Acc not important: {}".format(accuracy_score(y_true, y_pred_not_imp)))
-
-    sorted_labels = sorted(labels, key=lambda name: (name[1:], name[0]))
-    res = metrics.classification_report(y_true, y_pred, labels=sorted_labels, digits=3, zero_division=0,
-                                        output_dict=True)
-    res = dict(sorted(res.items(), key=lambda item: - (1.0 - item[1]['precision']) * item[1]['support']), )
-    logger.info('Data set classification report: \n\n{}'
-                .format(show_res(res)))
     logger.info("Done")
 
 

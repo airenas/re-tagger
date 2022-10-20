@@ -1,8 +1,7 @@
 import argparse
 import sys
 
-from sklearn.metrics import accuracy_score, f1_score
-
+from src.utils.compare import show_compare_results
 from src.utils.logger import logger
 
 
@@ -47,11 +46,7 @@ def main(argv):
                     y_pred.append(':'.join(w2t))
                     print("{}\t{}\t{}\t{}".format(w1[0], w1[1], ':'.join(w2t), args.diff_sym))
     logger.info("Results: all: {}, err: {}, {}".format(wc, errc, errc / wc))
-    logger.info("Acc: {}".format(accuracy_score(y_true, y_pred)))
-    labels = set()
-    for la in y_true:
-        labels.add(la)
-    logger.info("F1 : {}".format(f1_score(y_true, y_pred, labels=list(labels), average='weighted', zero_division=0)))
+    show_compare_results(y_true, y_pred)
     logger.info("Done")
 
 
