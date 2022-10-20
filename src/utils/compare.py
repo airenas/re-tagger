@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from sklearn import metrics
 from sklearn.metrics import accuracy_score, f1_score
 
 from src.utils.logger import logger
@@ -84,6 +85,11 @@ def main(argv):
         labels.add(la)
     logger.info("F1 : {}".format(f1_score(y_true, y_pred, labels=list(labels), average='weighted', zero_division=0)))
     logger.info("Acc not important: {}".format(accuracy_score(y_true, y_pred_not_imp)))
+
+    sorted_labels = sorted(labels, key=lambda name: (name[1:], name[0]))
+    logger.info('Data set classification report: \n\n{}'
+           .format(metrics.classification_report(y_true, y_pred, labels=sorted_labels, digits=3,
+                                                 zero_division=0)))
     logger.info("Done")
 
 
