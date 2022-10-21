@@ -88,9 +88,8 @@ def main(argv):
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
-                                 mode='min',
-                                 period=1)
-    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
+                                 mode='min')
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
 
     model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, callbacks=[checkpoint, es])
     model.summary(150)
