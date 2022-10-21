@@ -32,11 +32,12 @@ def show_res(res):
     report += "\n\n"
     row_fmt = "{:>{width}s} " + " {:>9.{digits}f}" * 3 + " {:>9}\n"
     for key, values in res.items():
-        if key not in footers:
+        if key not in footers and type(values) is dict:
             report += row_fmt.format(key, *values.values(), width=width, digits=2)
     report += "\n\n\n"
     for key in footers:
-        report += row_fmt.format(key, *res[key].values(), width=width, digits=2)
+        if type(res.get(key, None)) is dict:
+            report += row_fmt.format(key, *res[key].values(), width=width, digits=2)
 
     return report
 
@@ -50,7 +51,10 @@ def show_compare_results(y_true, y_pred):
     sorted_labels = sorted(labels, key=lambda name: (name[1:], name[0]))
     res = metrics.classification_report(y_true, y_pred, labels=sorted_labels, digits=3, zero_division=0,
                                         output_dict=True)
-    res = dict(sorted(res.items(), key=lambda item: - (1.0 - item[1]['precision']) * item[1]['support']), )
+    try:
+        res = dict(sorted(res.items(), key=lambda item: - (1.0 - item[1]['precision']) * item[1]['support']), )
+    except BaseException as err:
+        logger.warning(err)
     logger.info('Data set classification report: \n\n{}'
                 .format(show_res(res)))
 
