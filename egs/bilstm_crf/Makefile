@@ -76,6 +76,8 @@ ${out_dir}/%_pred_calc.txt: ${out_dir}/%_pred.txt ${out_dir}/%_wanted.txt
 	mv $@_ $@	
 calc/final: ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
 calc/pred: ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt
+calc/sort-err: ${out_dir}/test_final_calc.txt
+	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr
 ############################################
 build: test/train test/test
 .PHONY: build
