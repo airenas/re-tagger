@@ -31,7 +31,7 @@ def main(argv):
                         lwp = lw.split("\t")
                         wrds[1] = wrds[1].strip()
                         if lwp[0] != wrds[1]:
-                            lwp[0] = lwp[0].replace("#", "_")
+                            lwp[0] = lwp[0].replace("#", "_").strip()
                         if lwp[0] != wrds[1]:
                             raise Exception("problem at {}, '{}' != '{}'".format(li, wrds[1], lwp[0]))
                         if len(lwp) > 1:
