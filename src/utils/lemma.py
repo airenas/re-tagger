@@ -46,8 +46,8 @@ def fix(txt):
 
 def fix_empty_tag(txt, res):
     if len(txt) == 1 and txt.isalpha():
-        return "Xr"
-    return "X-"
+        return ":Xr"
+    return ":X-"
 
 
 class Lemmatizer:
