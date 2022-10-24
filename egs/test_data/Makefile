@@ -54,6 +54,9 @@ count/oracle: ${out_dir}/test_lemma_tags.txt ${out_dir}/test_plain.txt
 	$(python_cmd) local/count_oracle.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_lemma_tags.txt > ${out_dir}/test.oracle
 count/oracle-train: ${out_dir}/train_lemma_tags.txt ${out_dir}/train_plain.txt
 	$(python_cmd) local/count_oracle.py --f1 ${out_dir}/train_plain.txt --f2 ${out_dir}/train_lemma_tags.txt > ${out_dir}/train.oracle
+find/punctuations: ${out_dir}/all.txt
+	$(python_cmd) local/find_punctuations.py --input $^ > ${out_dir}/punct.txt
+	cat ${out_dir}/punct.txt
 count/tags: ${out_dir}/tags.txt
 ${out_dir}/tags.txt: ${out_dir}/train_plain.txt
 	$(python_cmd) local/count_tags.py --input $^ > $@_
