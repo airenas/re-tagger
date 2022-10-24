@@ -7,3 +7,9 @@ scikit-learn~=1.1.2
 sklearn-crfsuite~=0.3.6
 tensorflow~=2.10.0
 tensorflow-addons~=0.18.0
+
+tqdm~=4.64.1
+pytest~=7.1.0
+keras~=2.10.0
+datasets~=2.5.2
+numpy~=1.23.3

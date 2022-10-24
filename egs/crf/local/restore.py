@@ -2,6 +2,7 @@ import argparse
 import sys
 
 from src.utils.logger import logger
+from src.utils.punct import is_punctuation
 
 
 def half_change(pos, predited, t, i):
@@ -74,20 +75,29 @@ def main(argv):
             fli = iter(fl)
             for lp in fp:
                 wc += 1
-                ll = next(fli)
                 lp = lp.strip()
-                ll = ll.strip()
                 wp = lp.split("\t")
-                wl = ll.split("\t")
-                if len(wl) == 1:
-                    all_tags = []
-                else:
-                    all_tags = wl[1].split(":")
-                if wp[0] != wl[0]:
-                    wl[0] = wl[0].replace("#", "_").strip()
-                    wp[0] = wp[0].replace("#", "_").strip()
-                if wp[0] != wl[0]:
-                    raise Exception("problem at {}, '{}' != '{}'".format(wc, wp[0], wl[0]))
+
+                def next_lw():
+                    _ll = next(fli)
+                    _ll = _ll.strip()
+                    _wl = _ll.split("\t")
+                    _wl[0] = _wl[0].replace("#", "_").strip()
+                    if len(_wl) == 1:
+                        _all_tags = []
+                    else:
+                        _all_tags = _wl[1].split(":")
+                    return _wl, _all_tags
+
+                wl, all_tags = next_lw()
+
+                wp[0] = wp[0].replace("#", "_").strip()
+                while wp[0] != wl[0]:
+                    if is_punctuation(wl[0]):
+                        print("{}\t{}".format(wl[0], wl[1]))
+                        wl, all_tags = next_lw()
+                    else:
+                        raise Exception("problem at {}, '{}' != '{}'".format(wc, wp[0], wl[0]))
                 try:
                     fp, match, no_pos, several_match = restore(all_tags, wp[1], tags)
                     print("{}\t{}\t{}\t{}".format(wl[0], fp, ":".join(all_tags), wp[1]))

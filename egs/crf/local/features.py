@@ -1,6 +1,10 @@
 import math
 import string
 
+from tqdm import tqdm
+
+from src.utils.punct import is_punctuation
+
 
 def feat_word_v0(word, prefix, lemma):
     wl = word.lower()
@@ -14,7 +18,7 @@ def feat_word_v0(word, prefix, lemma):
         prefix + 'word[-3:]': str(wl[-3:]),
         prefix + 'word[-2:]': str(wl[-2:]),
         prefix + 'word.lower()': wl,
-        prefix + 'word.ispunctuation': (word in string.punctuation),
+        prefix + 'word.ispunctuation': is_punctuation(word),
         prefix + 'word.isdigit()': word.isdigit(),
     }
     return res
@@ -29,7 +33,7 @@ def f_punct(word, prefix):
 
 
 def feat_word_v0_punct(word, prefix, lemma):
-    if word in string.punctuation:
+    if is_punctuation(word):
         res = f_punct(word, prefix)
     else:
         res = feat_word_v0(word, prefix, lemma)
@@ -239,17 +243,25 @@ def format_data(csv_data):
     pos_id = 9
     pos_lemma = 10
     w_prev = 0
-    for i in range(len(csv_data)):
-        w_num = csv_data.iloc[i, 0]
-        if math.isnan(w_num):
-            continue
-        elif w_num == 1.0 or w_num < w_prev:
-            sents.append([[csv_data.iloc[i, 1], csv_data.iloc[i, pos_id], parse_lemma(csv_data.iloc[i, pos_lemma])]])
-        else:
-            sents[-1].append([csv_data.iloc[i, 1], csv_data.iloc[i, pos_id], parse_lemma(csv_data.iloc[i, pos_lemma])])
-        w_prev = w_num
-    for sent in sents:
-        for i, word in enumerate(sent):
-            if type(word[0]) != str:
-                del sent[i]
+    with tqdm("format data", total=len(csv_data)) as pbar:
+        for i in range(len(csv_data)):
+            pbar.update(1)
+            w_num = csv_data.iloc[i, 0]
+            if math.isnan(w_num):
+                continue
+            elif w_num == 1.0 or w_num < w_prev:
+                sents.append(
+                    [[csv_data.iloc[i, 1], csv_data.iloc[i, pos_id], parse_lemma(csv_data.iloc[i, pos_lemma])]])
+            else:
+                sents[-1].append(
+                    [csv_data.iloc[i, 1], csv_data.iloc[i, pos_id], parse_lemma(csv_data.iloc[i, pos_lemma])])
+            w_prev = w_num
     return sents
+
+
+def drop_puncts(s):
+    res = []
+    for wd in s:
+        if not is_punctuation(wd[0]):
+            res.append(wd)
+    return res

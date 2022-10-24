@@ -5,8 +5,9 @@ import sys
 
 import pandas as pd
 from sklearn_crfsuite import metrics as crfmetrics
+from tqdm import tqdm
 
-from egs.crf.local.features import format_data, sent2features, sent2labels
+from egs.crf.local.features import format_data, sent2features, sent2labels, drop_puncts
 from src.utils.logger import logger
 
 
@@ -17,6 +18,8 @@ def main(argv):
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
     parser.add_argument("--model", nargs='?', required=True, help="Model file")
     parser.add_argument("--out", nargs='?', required=False, help="Writes out predictions to tab separated file")
+    parser.add_argument("--no_punct", default=False, action=argparse.BooleanOptionalAction,
+                        help="Do not use punctuation in training/testing")
     parser.add_argument("--f_before", nargs='?', default=2, help="How many words use for features")
     parser.add_argument("--f_after", nargs='?', default=2, help="How many words use for features after")
     parser.add_argument("--f_func", nargs='?', default="get_word_feat", help="Features function")
@@ -37,6 +40,11 @@ def main(argv):
     logger.info("preparing data")
 
     test_sents = format_data(data)
+
+    if args.no_punct:
+        logger.info("Drop punctuations")
+        test_sents = [drop_puncts(s) for s in tqdm(test_sents, "dropping punctuations", len(test_sents))]
+
     params = {"words_before": int(args.f_before), "words_after": int(args.f_after), "method": args.f_func,
               "skip_punct": args.f_skip_punct}
     x_test = [sent2features(s, params=params) for s in test_sents]

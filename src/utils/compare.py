@@ -5,6 +5,7 @@ from sklearn import metrics
 from sklearn.metrics import accuracy_score, f1_score
 
 from src.utils.logger import logger
+from src.utils.punct import is_punctuation
 
 
 def not_important(w, t1, t2):
@@ -21,7 +22,7 @@ def not_important(w, t1, t2):
     return False
 
 
-def show_res(res):
+def show_res(res, n=15):
     footers = ["micro avg", "macro avg", "weighted avg"]
     headers = ["precision", "recall", "f1-score", "support"]
     longest_last_line_heading = "weighted avg"
@@ -31,7 +32,9 @@ def show_res(res):
     report = head_fmt.format("", *headers, width=width)
     report += "\n\n"
     row_fmt = "{:>{width}s} " + " {:>9.{digits}f}" * 3 + " {:>9}\n"
-    for key, values in res.items():
+    for i, (key, values) in enumerate(res.items()):
+        if i > n:
+            break
         if key not in footers and type(values) is dict:
             report += row_fmt.format(key, *values.values(), width=width, digits=2)
     report += "\n\n\n"
@@ -59,6 +62,11 @@ def show_compare_results(y_true, y_pred):
                 .format(show_res(res)))
 
 
+def first_word(l1):
+    w1 = l1.split("\t")
+    return w1[0].strip()
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description="Compares two files",
                                      epilog="E.g. " + sys.argv[0] + "",
@@ -68,6 +76,10 @@ def main(argv):
     parser.add_argument("--p1", nargs='?', default=1, help="pos tab separate column for compare for f1")
     parser.add_argument("--p2", nargs='?', default=1, help="pos tab separate column for compare for f2")
     parser.add_argument("--diff_sym", nargs='?', default="<--diff-->", help="Add symbols to lines that differs")
+    parser.add_argument("--ip1", default=False, action=argparse.BooleanOptionalAction,
+                        help="Ignore punctuation for file 1")
+    parser.add_argument("--ip2", default=False, action=argparse.BooleanOptionalAction,
+                        help="Ignore punctuation for file 2")
 
     args = parser.parse_args(args=argv)
 
@@ -81,8 +93,12 @@ def main(argv):
         with open(args.f2, 'r') as f2:
             f2i = iter(f2)
             for l1 in f1:
+                if args.ip1 and is_punctuation(first_word(l1)):
+                    continue
                 try:
                     l2 = next(f2i)
+                    while args.ip2 and is_punctuation(first_word(l2)):
+                        l2 = next(f2i)
                 except StopIteration:
                     logger.warning("Files not match")
                     break
