@@ -19,7 +19,7 @@ errors/types: data/train_final_calc.txt
 	cat data/train_final_calc.txt | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr | head -n 20
 
 errors/spec/%: data/%_final_calc_ws.txt
-	cat $^ | grep -P  -C20 $(spec-err) --color=always | awk '{$$1 = "\033[30m" $$1 "\033[0m";} 1' \
+	cat $^ | grep -P  -C20 $(spec-err) --color=always | awk -v OFS='\t' '{$$1 = "\033[30m" $$1 "\033[0m";} 1' \
 	    | aha --black --title '$(spec-err)' > $*_out.html
 
 build: errors/spec/test errors/spec/train data/test_final_calc_ws.txt data/train_final_calc_ws.txt
