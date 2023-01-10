@@ -22,6 +22,15 @@ def not_important(w, t1, t2):
     return False
 
 
+def drop_non_important(m):
+    m = list(m)
+    if m[0] == "N" or m[0] == "S" or m[0] == "Q":
+        m[-1] = "-"
+    if m[0] == "N" and m[1] in "nx":
+        m[1] = "c"
+    return "".join(m)
+
+
 def show_res(res, n=15):
     footers = ["micro avg", "macro avg", "weighted avg"]
     headers = ["precision", "recall", "f1-score", "support"]

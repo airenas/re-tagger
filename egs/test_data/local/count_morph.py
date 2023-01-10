@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from src.utils.compare import drop_non_important
 from src.utils.logger import logger
 
 
@@ -21,12 +22,12 @@ def main(argv):
             a += 1
             line = line.strip()
             words = line.split("\t")
-            if words[1] != words[2]:
+            if drop_non_important(words[1]) != drop_non_important(words[2]):
                 e += 1
                 if args.show:
                     logger.info(line)
 
-    logger.info("Read %d lines, errors %d, %.4f, %.4f" % (a, e, e / a, 1- e / a))
+    logger.info("Read %d lines, errors %d, %.4f, %.4f" % (a, e, e / a, 1 - e / a))
     logger.info("Done")
 
 

@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from src.utils.compare import drop_non_important
 from src.utils.conllu import ConlluReader
 from src.utils.logger import logger
 
@@ -26,7 +27,7 @@ def main(argv):
                 raise Exception("problem at {}, '{}', err: {}".format(sc, ' '.join(words), err))
             for i in range(len(words)):
                 wc += 1
-                print("%s\t%s" % (words[i], expected[i]))
+                print("%s\t%s" % (words[i], drop_non_important(expected[i])))
 
     logger.info("Read %d sentences, %d words" % (sc, wc))
     logger.info("Done")

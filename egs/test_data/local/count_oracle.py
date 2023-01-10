@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from src.utils.compare import show_compare_results
+from src.utils.compare import show_compare_results, drop_non_important
 from src.utils.logger import logger
 
 
@@ -32,19 +32,20 @@ def main(argv):
                 w2 = l2.split("\t")
                 w2t = []
                 if len(w2) > 1:
-                    w2t = w2[1].split(":")
+                    w2t = [drop_non_important(mi) for mi in w2[1].split(":")]
                 if w1[0] != w2[0]:
                     w1[0] = w1[0].replace("#", "_").strip()
                 if w1[0] != w2[0]:
                     raise Exception("problem at {}, '{}' != '{}'".format(wc, w1[0], w2[0]))
-                y_true.append(w1[1])
-                if w1[1] in w2t:
-                    y_pred.append(w1[1])
+                mi1 = drop_non_important(w1[1])
+                y_true.append(mi1)
+                if mi1 in w2t:
+                    y_pred.append(mi1)
                     print("{}\t{}".format(w1[0], w1[1]))
                 else:
                     errc += 1
                     y_pred.append(':'.join(w2t))
-                    print("{}\t{}\t{}\t{}".format(w1[0], w1[1], ':'.join(w2t), args.diff_sym))
+                    print("{}\t{}\t{}\t{}".format(w1[0], mi1, ':'.join(w2t), args.diff_sym))
     logger.info("Results: all: {}, err: {}, {}".format(wc, errc, errc / wc))
     show_compare_results(y_true, y_pred)
     logger.info("Done")
