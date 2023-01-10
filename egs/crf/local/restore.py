@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from src.utils.compare import drop_non_important
 from src.utils.logger import logger
 from src.utils.punct import is_punctuation
 
@@ -66,7 +67,8 @@ def main(argv):
 
     logger.info("Starting")
     with open(args.tags, 'r') as f:
-        tags = {it[0]: int(it[1]) for it in [w.strip().split("\t") for w in f]}
+        tags = {it[0]: {mi.split(":")[0]: int(mi.split(":")[1]) for mi in it[1].strip().split(" ")} for it in
+                [w.strip().split("\t") for w in f]}
     logger.info("File lemmas: {}".format(args.lemmas))
     logger.info("File pred  : {}".format(args.pred))
     wc, rc, mpc, nopc, multi_wc = 0, 0, 0, 0, 0
@@ -86,7 +88,7 @@ def main(argv):
                     if len(_wl) == 1:
                         _all_tags = []
                     else:
-                        _all_tags = _wl[1].split(":")
+                        _all_tags = [drop_non_important(mi) for mi in _wl[1].split(":")]
                     return _wl, _all_tags
 
                 wl, all_tags = next_lw()
@@ -99,7 +101,7 @@ def main(argv):
                     else:
                         raise Exception("problem at {}, '{}' != '{}'".format(wc, wp[0], wl[0]))
                 try:
-                    fp, match, no_pos, several_match = restore(all_tags, wp[1], tags)
+                    fp, match, no_pos, several_match = restore(all_tags, wp[1], tags.get(wp[0], {}))
                     print("{}\t{}\t{}\t{}".format(wl[0], fp, ":".join(all_tags), wp[1]))
                     if match:
                         rc += 1
