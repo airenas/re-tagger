@@ -19,6 +19,8 @@ def not_important(w, t1, t2):
         return True
     if t1l[0] == "S" and t2l[0] == "S" and t1l[0:-1] == t2l[0:-1]:
         return True
+    if t1l[0] == "X" and t2l[0] == "X":
+        return True
     return False
 
 
@@ -28,6 +30,8 @@ def drop_non_important(m):
         m[-1] = "-"
     if m[0] == "N" and m[1] in "nx":
         m[1] = "c"
+    if m[0] == "X":
+        m[1] = "-"
     return "".join(m)
 
 
