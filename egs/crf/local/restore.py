@@ -88,7 +88,7 @@ def main(argv):
                     if len(_wl) == 1:
                         _all_tags = []
                     else:
-                        _all_tags = [drop_non_important(mi) for mi in _wl[1].split(":")]
+                        _all_tags = [drop_non_important(_wl[0], mi) for mi in _wl[1].split(":")]
                     return _wl, _all_tags
 
                 wl, all_tags = next_lw()
