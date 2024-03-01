@@ -4,7 +4,7 @@
 data_dir?=../../data
 zip=MATAS-20-06-05-v1.0.zip
 out_dir?=data
-python_dir=${CURDIR}/../../src/python
+python_dir=${CURDIR}/../../src/utils
 ############################################
 install/req:
 	# conda create --name pos python=3.10
@@ -22,9 +22,9 @@ ${out_dir}/sentences.txt: ${out_dir}/all.txt
 	cat $^ | python $(python_dir)/tabwpl_to_sentences.py > $@_
 	mv $@_ $@
 ${out_dir}/word2vec.model: ${out_dir}/sentences.txt
-	cat $^ | python $(python_dir)/word2vec.py --output $@
+	python $(python_dir)/word2vec.py --input $^ --output $@
 ${out_dir}/fasttext.model: ${out_dir}/sentences.txt
-	cat $^ | python $(python_dir)/word2vec.py --output $@ --fast	
+	python $(python_dir)/word2vec.py --input $^ --output $@ --fast	
 ############################################
 build: ${out_dir}/word2vec.model ${out_dir}/fasttext.model
 .PHONY: build

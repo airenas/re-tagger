@@ -2,8 +2,9 @@
 -include Makefile.options
 ############################################
 install/req:
-	# conda create --name pos python=3.10
+	# conda create --name pos python=3.11
 	pip install -r requirements.txt
+	pip install tensorflow[and-cuda]
 
 test/unit:
 	PYTHONPATH=./ pytest -v --log-level=INFO

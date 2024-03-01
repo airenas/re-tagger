@@ -14,7 +14,7 @@ cuda=
 ifeq ($(no_cuda),1)
 	cuda=CUDA_VISIBLE_DEVICES=""
 endif
-batch?=32
+batch?=16
 hidden?=300
 log?=INFO
 python_cmd=PYTHONPATH=../../ $(cuda) LOG_LEVEL=$(log) python

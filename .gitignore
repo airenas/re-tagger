@@ -132,3 +132,8 @@ dmypy.json
 data/
 egs/test_data/Makefile.options
 /egs/crf/Makefile.options
+egs/bilstm_crf/e*/
+egs/crf/data*/
+egs/crf/backup/
+egs/crf/t1/
+docs/audr*
