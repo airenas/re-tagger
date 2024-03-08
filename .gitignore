@@ -137,3 +137,7 @@ egs/crf/data*/
 egs/crf/backup/
 egs/crf/t1/
 docs/audr*
+egs/test_data/data*/**
+egs/bilstm_crf/data*/**
+**/Makefile.v*.options
+egs/test_data/release
