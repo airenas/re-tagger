@@ -16,6 +16,8 @@ def drop_non_important(w, m):
         m[-1] = "-"
     if m[0] == "N" and m[1] in "nx":
         m[1] = "c"
+    if m[0] == "M" and m[1] in "c":
+        m[3] = "-"
     if m[0] in "XY":
         m[1] = "-"
     if m[0] in "OIQSRAVC":

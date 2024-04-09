@@ -22,6 +22,11 @@ class Connlu:
         return map(lambda l: (l.split("\t")[1]), filter(lambda l: (not l.startswith('#')), self.lines))
 
     def tags(self):
+        for l in self.lines:
+            if not l.startswith('#'):
+                colls = l.split("\t")
+                if len(colls) < 10:
+                    raise RuntimeError(f"wrong line: {l}\n{colls}")
         return map(lambda l: extract_tag(l),
                    map(lambda l: (l.split("\t")[9]), filter(lambda l: (not l.startswith('#')), self.lines)))
 

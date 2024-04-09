@@ -1,9 +1,9 @@
 ############################################
--include Makefile.options
+cfg?=Makefile.options
+-include $(cfg)
 take_n?=100000000000000
 ############################################
-data_dir?=../../data
-zip=MATAS-20-06-05-v1.0.zip
+data_dir?=../test_data/data
 out_dir?=data
 python_dir=${CURDIR}/../../src/utils
 python_cmd=PYTHONPATH=../../ LOG_LEVEL=INFO python
@@ -21,9 +21,9 @@ endif
 ${out_dir}:
 	mkdir -p $@	
 ############################################
-${out_dir}/%: ../test_data/data/% | ${out_dir}
+${out_dir}/%: $(data_dir)/% | ${out_dir}
 	cp $^ $@
-${out_dir}/train.txt: ../test_data/data/train.txt | ${out_dir}
+${out_dir}/train.txt: $(data_dir)/train.txt | ${out_dir}
 	cat $^ | head -n $(take_n) > $@
 ${out_dir}/train_f.txt: ${out_dir}/train.txt
 	$(python_cmd) local/fix_data.py --input $^ > $@_
@@ -75,6 +75,8 @@ ${out_dir}/%_pred_calc.txt: ${out_dir}/%_pred.txt ${out_dir}/%_wanted.txt
 	mv $@_ $@	
 calc/final: clean/test ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
 calc/pred: clean/pred ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt
+show/err/test: ${out_dir}/test_final_calc.txt
+	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr	
 ############################################
 build: test/train test/test
 .PHONY: build

@@ -1,11 +1,12 @@
--include $(option_file)
+cfg?=Makefile.options
+-include $(cfg)
 ############################################
--include Makefile.options
 take_n?=100000000000000
 ############################################
-data_dir?=../../data
+data_dir?=../test_data/data
 out_dir?=data
 model?=${out_dir}/models/morph/1
+out_model_path?=${out_dir}/tm-0.1
 python_dir=${CURDIR}/../../src/utils
 nn_params?=--use_ends
 use_ft?=1
@@ -19,12 +20,12 @@ hidden?=300
 log?=INFO
 python_cmd=PYTHONPATH=../../ $(cuda) LOG_LEVEL=$(log) python
 ############################################
-${out_dir}:
+${out_dir} ${out_model_path}:
 	mkdir -p $@	
 ############################################
-${out_dir}/%: ../test_data/data/% | ${out_dir}
+${out_dir}/%: $(data_dir)/% | ${out_dir}
 	cp $^ $@
-${out_dir}/train.txt: ../test_data/data/train.txt | ${out_dir}
+${out_dir}/train.txt: $(data_dir)/train.txt | ${out_dir}
 	cat $^ | head -n $(take_n) > $@
 ${out_dir}/%_f.txt: ${out_dir}/%.txt
 	$(python_cmd) ../crf/local/fix_data.py --input $^ > $@_
@@ -74,10 +75,29 @@ ${out_dir}/%_final_calc.txt: ${out_dir}/%_pred_restore.txt ${out_dir}/%_plain.tx
 ${out_dir}/%_pred_calc.txt: ${out_dir}/%_pred.txt ${out_dir}/%_wanted.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/$*_wanted.txt --f2 ${out_dir}/$*_pred.txt > $@_
 	mv $@_ $@	
-calc/final: ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt
+calc/final: ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt ${out_dir}/test_plain.txt ${out_dir}/test_pred_restore.txt
+	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_pred_restore.txt > /dev/null
 calc/pred: ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt
-calc/sort-err: ${out_dir}/test_final_calc.txt
+show/err/test: ${out_dir}/test_final_calc.txt
 	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr
+############################################
+export/onnx: ${out_dir}/model.onnx
+${out_dir}/model.onnx:
+	$(python_cmd) local/export_onnx.py --model ${model} --out $@
+
+############################################
+pack: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/delfi_cbow.bin ${out_model_path}/tags_freq \
+	${out_model_path}/clitics 
+${out_model_path}/model.onnx: ${out_dir}/model.onnx | ${out_model_path}
+	cp $^ $@
+${out_model_path}/tags: ${out_dir}/model.onnx | ${out_model_path}
+	cp $^ $@
+${out_model_path}/tags_freq: ${out_dir}/tags.txt | ${out_model_path}
+	cp $^ $@
+${out_model_path}/clitics: ${out_dir}/clitics_lemma.txt | ${out_model_path}
+	cp $^ $@		
+${out_model_path}/delfi_cbow.bin: ${ft_model} | ${out_model_path}
+	cp $^ $@		
 ############################################
 build: test/train test/test
 .PHONY: build

@@ -25,7 +25,11 @@ def main(argv):
                 pbar.update(1)
                 sc += 1
                 words = sent.words()
-                tags = list(sent.tags())
+                try:
+                    tags = list(sent.tags())
+                except BaseException as err:
+                    raise err
+
                 for i, word in enumerate(words):
                     if " " in word:
                         if not tags[i].startswith('X'):

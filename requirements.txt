@@ -13,3 +13,6 @@ pytest~=7.1.0
 keras~=2.15.0
 datasets~=2.5.2
 numpy~=1.23.3
+onnx==1.15.0
+onnxruntime==1.17.1
+tf2onnx==1.16.1

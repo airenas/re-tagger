@@ -1,14 +1,17 @@
 ############################################
--include Makefile.options
+cfg?=Makefile.options
+-include $(cfg)
 ############################################
 data_dir?=../../data
-zip=MATAS-20-06-05-v1.0.zip
+zip?=MATAS-20-06-05-v1.0.zip
+zip_dir?=MATAS-v1.0/CONLLU
 out_dir?=data
 python_dir=${CURDIR}/../../src/utils
 python_cmd=PYTHONPATH=../../ LOG_LEVEL=INFO python
+lemma_docker?=airenas/lema:1.4.1212
 ############################################
 install/req:
-	# conda create --name pos python=3.10
+	# conda create --name pos python=3.11
 	pip install -r ../../requirements.txt
 ############################################
 ${out_dir}/extracted: 
@@ -19,8 +22,12 @@ ${out_dir}:
 ${out_dir}/extracted/.done: $(data_dir)/${zip} | ${out_dir}/extracted
 	unzip $(data_dir)/${zip} -d ${out_dir}/extracted
 	touch $@
-${out_dir}/all.txt: ${out_dir}/extracted/.done
-	pv ${out_dir}/extracted/MATAS-v1.0/CONLLU/*.conllu > $@
+${out_dir}/all_1.txt: ${out_dir}/extracted/.done
+	pv ${out_dir}/extracted/$(zip_dir)/*.conllu > $@
+${out_dir}/all.txt: ${out_dir}/all_1.txt
+	cat $^ | sed 's/ _/\t_/g' | \
+		sed 's/Sing\t_\tMultext/Sing\t_\t_\t_\tMultext/g' > $@_
+	mv $@_ $@	
 ${out_dir}/test_dad.txt: ${data_dir}/ma_testai.csv | ${out_dir}/extracted
 	python local/csv_to_sentences.py --input $^ > $@_
 	mv $@_ $@
@@ -61,11 +68,13 @@ count/tags: ${out_dir}/tags.txt
 ${out_dir}/tags.txt: ${out_dir}/train_plain.txt
 	$(python_cmd) local/count_tags.py --input $^ > $@_
 	mv $@_ $@
+show/err/morph: ${out_dir}/morf.cmp
+	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr	
 ############################################
 start/lemma:
 	docker run -it -e SECRET=$(LEMA_SECRET) -e LEMA_TYPE=hunspell \
 		-e LEMA_HUNSPELL_SKIP_OFFENSIVE=false \
-		-p 8001:8000 airenas/lema:1.4.1212		
+		-p 8001:8000 $(lemma_docker)
 .PHONY: start/lemma
 start/morph:
 	docker run -it \
