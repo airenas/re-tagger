@@ -21,6 +21,9 @@ class Connlu:
     def words(self):
         return map(lambda l: (l.split("\t")[1]), filter(lambda l: (not l.startswith('#')), self.lines))
 
+    def main_forms(self):
+        return map(lambda l: (l.split("\t")[2]), filter(lambda l: (not l.startswith('#')), self.lines))
+
     def tags(self):
         for l in self.lines:
             if not l.startswith('#'):

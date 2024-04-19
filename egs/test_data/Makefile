@@ -68,6 +68,10 @@ count/tags: ${out_dir}/tags.txt
 ${out_dir}/tags.txt: ${out_dir}/train_plain.txt
 	$(python_cmd) local/count_tags.py --input $^ > $@_
 	mv $@_ $@
+count/full_tags: ${out_dir}/full_tags.txt
+${out_dir}/full_tags.txt: ${out_dir}/train.txt
+	$(python_cmd) local/count_full_tags.py --input $^ > $@_
+	mv $@_ $@
 show/err/morph: ${out_dir}/morf.cmp
 	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr	
 ############################################

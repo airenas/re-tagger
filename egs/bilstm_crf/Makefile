@@ -90,9 +90,9 @@ pack: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/delf
 	${out_model_path}/clitics 
 ${out_model_path}/model.onnx: ${out_dir}/model.onnx | ${out_model_path}
 	cp $^ $@
-${out_model_path}/tags: ${out_dir}/model.onnx | ${out_model_path}
+${out_model_path}/tags: ${out_dir}/tags | ${out_model_path}
 	cp $^ $@
-${out_model_path}/tags_freq: ${out_dir}/tags.txt | ${out_model_path}
+${out_model_path}/tags_freq: ${out_dir}/full_tags.txt | ${out_model_path}
 	cp $^ $@
 ${out_model_path}/clitics: ${out_dir}/clitics_lemma.txt | ${out_model_path}
 	cp $^ $@		
