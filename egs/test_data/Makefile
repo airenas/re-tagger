@@ -49,12 +49,17 @@ ${out_dir}/train_lemma.txt: ${out_dir}/train.txt ${out_dir}/clitics_lemma.txt
 	mv $@_ $@
 ${out_dir}/test_morph.txt: ${out_dir}/test.txt
 	$(python_cmd) local/morphize.py --input $^ > $@_
-	mv $@_ $@	
+	mv $@_ $@
+${out_dir}/test_bilstm.txt: ${out_dir}/test.txt
+	$(python_cmd) local/bilstm_run.py --input $^ > $@_
+	mv $@_ $@
 ############################################
 count/possibilities: ${out_dir}/test_lemma.txt
 	$(python_cmd) local/count_posibilities.py --input $^
 count/morph-vs-matas: ${out_dir}/test_morph.txt ${out_dir}/test_plain.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_morph.txt --p2 2 > ${out_dir}/morf.cmp
+count/bilstm-vs-matas: ${out_dir}/test_bilstm.txt ${out_dir}/test_plain.txt
+	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_bilstm.txt --p2 2 > ${out_dir}/bilstm.cmp
 count/oracle: ${out_dir}/test_lemma_tags.txt ${out_dir}/test_plain.txt
 	$(python_cmd) local/count_oracle.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_lemma_tags.txt > ${out_dir}/test.oracle
 count/oracle-train: ${out_dir}/train_lemma_tags.txt ${out_dir}/train_plain.txt
@@ -73,7 +78,9 @@ ${out_dir}/full_tags.txt: ${out_dir}/train.txt
 	$(python_cmd) local/count_full_tags.py --input $^ > $@_
 	mv $@_ $@
 show/err/morph: ${out_dir}/morf.cmp
-	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr	
+	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr
+show/err/bilstm: ${out_dir}/bilstm.cmp
+	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr
 ############################################
 start/lemma:
 	docker run -it -e SECRET=$(LEMA_SECRET) -e LEMA_TYPE=hunspell \
