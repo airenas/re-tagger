@@ -6,7 +6,8 @@ take_n?=100000000000000
 data_dir?=../test_data/data
 out_dir?=data
 model?=${out_dir}/models/morph/1
-out_model_path?=${out_dir}/tm-0.1
+out_model?=tm-0.1
+out_model_path?=${out_dir}/$(out_model)
 python_dir=${CURDIR}/../../src/utils
 nn_params?=--use_ends
 use_ft?=1
@@ -97,7 +98,13 @@ ${out_model_path}/tags_freq: ${out_dir}/full_tags.txt | ${out_model_path}
 ${out_model_path}/clitics: ${out_dir}/clitics_lemma.txt | ${out_model_path}
 	cp $^ $@		
 ${out_model_path}/delfi_cbow.bin: ${ft_model} | ${out_model_path}
-	cp $^ $@		
+	cp $^ $@
+pack/gz: ${out_dir}/${out_model}.tar.gz
+${out_dir}/${out_model}.tar.gz: pack
+	tar -czvf $@_ -C ${out_dir}/ ./${out_model}
+	mv $@_ $@
+
+
 ############################################
 build: test/train test/test
 .PHONY: build
