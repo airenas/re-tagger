@@ -53,6 +53,9 @@ ${out_dir}/test_morph.txt: ${out_dir}/test.txt
 ${out_dir}/test_bilstm.txt: ${out_dir}/test.txt
 	$(python_cmd) local/bilstm_run.py --input $^ > $@_
 	mv $@_ $@
+${out_dir}/train_bilstm.txt: ${out_dir}/train.txt
+	$(python_cmd) local/bilstm_run.py --input $^ > $@_
+	mv $@_ $@
 ############################################
 count/possibilities: ${out_dir}/test_lemma.txt
 	$(python_cmd) local/count_posibilities.py --input $^
@@ -110,7 +113,7 @@ ${out_dir}/%_plain.txt: ${out_dir}/%.txt
 ############################################
 build: ${out_dir}/test_lemma_tags.txt ${out_dir}/train_lemma.txt ${out_dir}/test_morph.txt \
 	${out_dir}/test_plain.txt ${out_dir}/train_lemma_tags.txt ${out_dir}/train_plain.txt \
-	${out_dir}/tags.txt
+	${out_dir}/tags.txt ${out_dir}/full_tags.txt
 .PHONY: build
 unneeded: ${out_dir}/unneeded_params.txt 
 ############################################
