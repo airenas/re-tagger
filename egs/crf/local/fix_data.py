@@ -25,8 +25,6 @@ def fix_label(param):
         s[6] = "-"
         if s[4] == 'd':
             s[4] = 'p'
-        if s[3] == 'n':
-            s[3] = 'f'
     elif s[0] == 'V':
         s[1] = '-'
         s[3] = '-'
