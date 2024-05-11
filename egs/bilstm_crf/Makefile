@@ -79,6 +79,7 @@ ${out_dir}/%_pred_calc.txt: ${out_dir}/%_pred.txt ${out_dir}/%_wanted.txt
 calc/final: ${out_dir}/train_final_calc.txt ${out_dir}/test_final_calc.txt ${out_dir}/test_plain.txt ${out_dir}/test_pred_restore.txt
 	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_pred_restore.txt > /dev/null
 calc/pred: ${out_dir}/train_pred_calc.txt ${out_dir}/test_pred_calc.txt
+calc/test: ${out_dir}/test_pred_restore.txt ${out_dir}/test_final_calc.txt
 show/err/test: ${out_dir}/test_final_calc.txt
 	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr
 ############################################
