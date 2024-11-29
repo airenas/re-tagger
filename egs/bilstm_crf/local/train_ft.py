@@ -59,9 +59,9 @@ def main(argv):
     input = tf.keras.layers.Input(shape=(None, e_dim,))
     output = input
     output = tf.keras.layers.Bidirectional(
-        tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1))(output)
+        tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0))(output)
     # output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1)(output)
-    # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(hidden, activation="relu"))(output)
+    # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(hidden, activation="tanh"))(output)
     m1 = tf.keras.Model(input, output)
     m1.summary()
     model = CRFModelWrapper(m1, num_tags)
