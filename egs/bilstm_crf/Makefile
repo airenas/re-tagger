@@ -49,8 +49,10 @@ endif
 ${out_dir}/words ${out_dir}/tags: ${out_dir}/train_f.txt
 	$(python_cmd) local/prepare_vocab.py --input $^ --out_v ${out_dir}/words --out_t ${out_dir}/tags
 ############################################
-start/tf-serving:
-	docker run -it -p 8501:8501 -v $(CURDIR)/data/models/morph:/models/morph -e MODEL_NAME=morph tensorflow/serving:2.8.3
+start/tf-serving/cpu:
+	docker run -it -p 8501:8501 -v $(CURDIR)/${out_dir}/models/morph:/models/morph -e MODEL_NAME=morph tensorflow/serving:latest
+start/tf-serving/gpu:
+	docker run -it -p 8501:8501 --gpus all -v $(CURDIR)/${out_dir}/models/morph:/models/morph -e MODEL_NAME=morph tensorflow/serving:latest-gpu	
 test/serving-api:
 	curl -X POST http://localhost:8501/v1/models/morph:predict -d '{"inputs": [[485,4]]}'	
 test/test: ${out_dir}/test_pred.txt

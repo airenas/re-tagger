@@ -17,6 +17,6 @@ make cfg=xxx build
 cd egs/bilstm_crf
 make cfg=xxx train
 
-# pack fir inference
+# pack for inference
 make cfg=xxx pack
 ```
