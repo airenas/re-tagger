@@ -9,7 +9,7 @@ from src.utils.logger import logger
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description="Predicts with bilstm_crf model",
+    parser = argparse.ArgumentParser(description="Export to ONNX",
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--model", nargs='?', required=True, help="Input model")
@@ -23,7 +23,7 @@ def main(argv):
     model.base_model.summary()
 
     logger.info("converting")
-    onnx_model, _ = tf2onnx.convert.from_keras(model, opset=13)
+    onnx_model, _ = tf2onnx.convert.from_keras(model, opset=18)
     logger.info(f"saving {args.out}")
     onnx.save(onnx_model, args.out)
 
