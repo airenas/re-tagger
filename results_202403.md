@@ -3,15 +3,17 @@
 On CONLLU_24_01_30.zip test set
 
 
-| No | Method| Acc | Err count  |
-|-|---|-|-|
-| o2 | Oracle | `0.99235` | `338` |
-| f2 | Fotonija morph | `0.95808` | `1854` |
+| No | Method                                                                        | Acc | Err count | Date       | Test details     |
+|-|-------------------------------------------------------------------------------|-|-----------|------------|-----------------------|
+| o2 | Oracle                                                                        | `0.99235` | `338`     |
+| f2 | Fotonija morph                                                                | `0.95808` | `1854`    |
 ||
-| | **CRF** *context: 2 words before, 2 after*
-| c2 | Word features | `0.97411` | `1145` |
-| | **BiLSTM-CRF** | 
-| l2 | embedding pretrained fasttext cbow, 300 hidden neurons | `0.97750` | `995` |
+| | **CRF** *context: 2 words before, 2 after*                                    
+| c2 | Word features                                                                 | `0.97411` | `1145`    |
+| | **BiLSTM-CRF**                                                                | 
+| l2 | embedding pretrained fasttext cbow, 300 hidden neurons                        | `0.97750` | `995`     | | data_v5.3             
+| l21 | embedding pretrained fasttext cbow, 300 hidden neurons, cuddn compatible lstm | `0.97773` | `985`    | 2024-11-30 | data_v6, model tm-0.6 | 
+
 
 ## Top errors
 
@@ -87,4 +89,29 @@ On CONLLU_24_01_30.zip test set
       8 Ncmsnn-	X-
       8 Ncmpnn-	X-
       7 Y-	Ig
+```
+
+### l21
+```txt
+     51 Np---n-	X-
+     48 Ncfsgn-	Ncfpnn-
+     39 Pgmpgn	Pgfpgn
+     33 Ncfsin-	Ncfsnn-
+     31 Npmsnn-	X-
+     31 Ncfpnn-	Ncfsgn-
+     30 Y-	X-
+     16 Vgps-pmpnnnn-p	Vgi-----n--n--
+     16 Pgfpgn	Pgmpgn
+     16 Npmsgn-	X-
+     13 Rgp	Cg
+     13 Agpfpnn	Agpfsgn
+     11 Ncfsnn-	Ncfsin-
+      9 Vgpp-sfpnnnn-p	Vgpp--npnn-n-p
+      9 Vgi-----n--n--	Vgps-pmpnnnn-p
+      8 Ncmsnn-	X-
+      8 Ncmpnn-	X-
+      7 Y-	Ig
+      7 Vgmp3---n--ni-	Ncmsgn-
+      7 Qg	Rgp
+      7 Cg	Qg
 ```
