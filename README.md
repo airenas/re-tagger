@@ -16,7 +16,9 @@ make cfg=xxx build
 ```bash
 cd egs/bilstm_crf
 make cfg=xxx train
-
+## show results on test set
+make cfg=xxx show/err/test
 # pack for inference
 make cfg=xxx pack
 ```
+

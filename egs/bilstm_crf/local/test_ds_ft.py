@@ -40,8 +40,6 @@ def main(argv):
 
     words = list(data[1].unique())
     logger.info("words count: {}".format(len(words)))
-    words = list(data[1].unique())
-    logger.info("words count: {}".format(len(words)))
     embeddings, e_dim = prepare_fasttext_matrix_emb_layer(args.in_ft, words)
 
     lookup_layer = tf.keras.layers.StringLookup(vocabulary=words, num_oov_indices=0)
