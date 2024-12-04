@@ -1,5 +1,6 @@
 import math
 
+import finalfusion
 import numpy as np
 import tensorflow as tf
 from gensim.models.fasttext import load_facebook_vectors
@@ -52,6 +53,26 @@ def prepare_fasttext_matrix_emb_layer(ft_model_file, words):
         if ev is not None:
             matrix[i] = ev
         if w not in ft_model.key_to_index:
+            unk += 1
+            logger.debug("not found word '{}'".format(w))
+    logger.info("Unknown words {} (of {})".format(unk, len(words)))
+    return tf.keras.layers.Embedding(input_dim=matrix.shape[0],
+                                     output_dim=matrix.shape[1], weights=[matrix]), matrix.shape[1]
+
+
+def prepare_fifu_matrix_emb_layer(ft_model_file, words):
+    logger.info("loading fifu {}".format(ft_model_file))
+    ft_model = finalfusion.load_finalfusion(ft_model_file)
+    logger.info("loaded {}".format(ft_model_file))
+    dim = ft_model.storage.shape[1]
+    matrix = np.zeros((len(words), dim))
+    unk = 0
+    vocab = ft_model.vocab
+    for i, w in enumerate(words):
+        ev = ft_model[w]
+        if ev is not None:
+            matrix[i] = ev
+        if w not in vocab.word_index:
             unk += 1
             logger.debug("not found word '{}'".format(w))
     logger.info("Unknown words {} (of {})".format(unk, len(words)))

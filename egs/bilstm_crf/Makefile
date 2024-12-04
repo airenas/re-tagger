@@ -85,13 +85,23 @@ calc/test: ${out_dir}/test_pred_restore.txt ${out_dir}/test_final_calc.txt
 show/err/test: ${out_dir}/test_final_calc.txt
 	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr
 ############################################
+${out_dir}/test_pred_ext.txt: ${out_dir}/test_f.txt
+	$(python_cmd) ../test_data/local/bilstm_run.py --input $^ > $@_
+	mv $@_ $@
+${out_dir}/test_final_calc_ext.txt: ${out_dir}/test_pred_ext.txt ${out_dir}/test_plain.txt
+	$(python_cmd) $(python_dir)/compare.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_pred_ext.txt > $@_
+	mv $@_ $@
+show/err/test/ext: ${out_dir}/test_final_calc_ext.txt
+	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr | head -n 50
+############################################
 export/onnx: ${out_dir}/model.onnx
 ${out_dir}/model.onnx:
 	$(python_cmd) local/export_onnx.py --model ${model} --out $@
 
 ############################################
-pack: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/delfi_cbow.bin ${out_model_path}/tags_freq \
+pack: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/$(ft_model_name) ${out_model_path}/tags_freq \
 	${out_model_path}/clitics 
+.PHONY: pack	
 ${out_model_path}/model.onnx: ${out_dir}/model.onnx | ${out_model_path}
 	cp $^ $@
 ${out_model_path}/tags: ${out_dir}/tags | ${out_model_path}
@@ -100,14 +110,22 @@ ${out_model_path}/tags_freq: ${out_dir}/full_tags.txt | ${out_model_path}
 	cp $^ $@
 ${out_model_path}/clitics: ${out_dir}/clitics_lemma.txt | ${out_model_path}
 	cp $^ $@		
-${out_model_path}/delfi_cbow.bin: ${ft_model} | ${out_model_path}
+${out_model_path}/$(ft_model_name): ${ft_model} | ${out_model_path}
 	cp $^ $@
-pack/gz: ${out_dir}/${out_model}.tar.gz
-${out_dir}/${out_model}.tar.gz: pack
+${out_dir}/${out_model}.tar.gz: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/$(ft_model_name) ${out_model_path}/tags_freq \
+	${out_model_path}/clitics 
 	tar -czvf $@_ -C ${out_dir}/ ./${out_model}
 	mv $@_ $@
-
-
+pack/gz: ${out_dir}/${out_model}.tar.gz
+.PHONY: pack/gz
+############################################
+build/data/docker: pack
+	cd data_docker && make dbuild data_pack=${out_model_path} version=${version}
+.PHONY: build/data/docker	
+info:
+	@echo pack data = ${out_dir}/
+	@echo version 	= ${version}
+.PHONY: info
 ############################################
 build: test/train test/test
 .PHONY: build

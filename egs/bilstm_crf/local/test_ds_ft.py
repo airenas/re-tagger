@@ -5,7 +5,8 @@ import sys
 import pandas as pd
 import tensorflow as tf
 
-from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer
+from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer, \
+    prepare_fifu_matrix_emb_layer
 from egs.bilstm_crf.local.predict import predict_ds
 from src.utils.logger import logger
 
@@ -40,9 +41,10 @@ def main(argv):
 
     words = list(data[1].unique())
     logger.info("words count: {}".format(len(words)))
-    words = list(data[1].unique())
-    logger.info("words count: {}".format(len(words)))
-    embeddings, e_dim = prepare_fasttext_matrix_emb_layer(args.in_ft, words)
+    if args.in_ft.endswith(".fifu"):
+        embeddings, e_dim = prepare_fifu_matrix_emb_layer(args.in_ft, words)
+    else:
+        embeddings, e_dim = prepare_fasttext_matrix_emb_layer(args.in_ft, words)
 
     lookup_layer = tf.keras.layers.StringLookup(vocabulary=words, num_oov_indices=0)
     t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0, invert=True)

@@ -8,7 +8,8 @@ from sklearn.model_selection import train_test_split
 from tensorflow.python.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow_addons.text import CRFModelWrapper
 
-from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer
+from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer, \
+    prepare_fifu_matrix_emb_layer
 from egs.bilstm_crf.local.prepare_data import make_train_dataset, map_and_batch
 from src.utils.logger import logger
 
@@ -54,14 +55,17 @@ def main(argv):
 
     words = list(data[1].unique())
     logger.info("words count: {}".format(len(words)))
-    embeddings, e_dim = prepare_fasttext_matrix_emb_layer(args.in_ft, words)
+    if args.in_ft.endswith(".fifu"):
+        embeddings, e_dim = prepare_fifu_matrix_emb_layer(args.in_ft, words)
+    else:
+        embeddings, e_dim = prepare_fasttext_matrix_emb_layer(args.in_ft, words)
 
     input = tf.keras.layers.Input(shape=(None, e_dim,))
     output = input
     output = tf.keras.layers.Bidirectional(
-        tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1))(output)
-    # output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1)(output)
-    # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(hidden, activation="relu"))(output)
+        tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0))(output)
+    output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0)(output)
+    # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(hidden, activation="tanh"))(output)
     m1 = tf.keras.Model(input, output)
     m1.summary()
     model = CRFModelWrapper(m1, num_tags)
