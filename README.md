@@ -18,7 +18,7 @@ cd egs/bilstm_crf
 make cfg=xxx train
 ## show results on test set
 make cfg=xxx show/err/test
-# pack for inference
-make cfg=xxx pack
+# pack volume for inference
+make cfg=xxx build/data/docker/push
 ```
 
