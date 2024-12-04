@@ -122,6 +122,9 @@ pack/gz: ${out_dir}/${out_model}.tar.gz
 build/data/docker: pack
 	cd data_docker && make dbuild data_pack=${out_model_path} version=${version}
 .PHONY: build/data/docker	
+build/data/docker/push: 
+	cd data_docker && make dpush data_pack=${out_model_path} version=${version}
+.PHONY: build/data/docker
 info:
 	@echo pack data = ${out_dir}/
 	@echo version 	= ${version}
