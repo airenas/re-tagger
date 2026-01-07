@@ -22,3 +22,8 @@ make cfg=xxx show/err/test
 make cfg=xxx build/data/docker/push
 ```
 
+## Test with rust onnx runtime runing somethere
+```bash
+make cfg=xxx show/err/test/ext
+```
+

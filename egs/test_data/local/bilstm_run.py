@@ -52,7 +52,7 @@ def main(argv):
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
-    parser.add_argument("--url", nargs='?', default="http://localhost:8000/tag-parsed", help="BI-LSTM server url")
+    parser.add_argument("--url", nargs='?', default="http://localhost:8000/tag-parsed?skip_model=false", help="BI-LSTM server url")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
