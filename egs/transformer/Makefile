@@ -38,8 +38,9 @@ ${out_dir}/%_wanted.txt: ${out_dir}/%_f.txt
 ############################################
 train: ${model}
 ############################################
+max_steps?=-1
 ${model}: ${out_dir}/train_f.txt
-	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out $@ --max_steps 1000 \
+	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out $@ --max_steps $(max_steps) \
 		--batch_size $(batch) --grad_accum_steps $(grad_accum)
 ############################################
 test/test: ${out_dir}/test_pred.txt
