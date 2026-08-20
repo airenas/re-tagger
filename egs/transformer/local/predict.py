@@ -3,9 +3,9 @@ import sys
 
 import torch
 from tqdm import tqdm
-from transformers import AutoModelForTokenClassification, AutoTokenizer
+from transformers import AutoTokenizer
 
-from egs.transformer.local.train import read_conllu
+from egs.transformer.local.train import load_finetuned_model, read_conllu
 from src.utils.logger import logger
 
 
@@ -47,7 +47,7 @@ def main(argv):
     logger.info("Loading model: {}".format(args.model))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForTokenClassification.from_pretrained(args.model).to(device)
+    model = load_finetuned_model(args.model).to(device)
     model.eval()
 
     logger.info("Loading: {}".format(args.input))

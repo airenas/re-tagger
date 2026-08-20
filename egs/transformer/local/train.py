@@ -164,6 +164,29 @@ class MLPClassifierHead(nn.Module):
         return self.out_proj(x)
 
 
+def load_finetuned_model(model_dir):
+    """Loads a fine-tuned model dir, rebuilding a custom classifier head (if used) before reloading its weights."""
+    model = AutoModelForTokenClassification.from_pretrained(model_dir)
+
+    head_path = os.path.join(model_dir, "classifier_head.txt")
+    classifier_head = open(head_path, encoding="utf-8").read().strip() if os.path.exists(head_path) else "linear"
+
+    if classifier_head == "mlp":
+        dropout = getattr(model.config, "classifier_dropout", None) or 0.1
+        model.classifier = MLPClassifierHead(model.config.hidden_size, model.config.num_labels, dropout=dropout)
+        # from_pretrained already discarded the mismatched classifier.* weights above; reload them now
+        from safetensors.torch import load_file
+        safetensors_path = os.path.join(model_dir, "model.safetensors")
+        if os.path.exists(safetensors_path):
+            state_dict = load_file(safetensors_path)
+        else:
+            state_dict = torch.load(os.path.join(model_dir, "pytorch_model.bin"), map_location="cpu")
+        missing, unexpected = model.load_state_dict(state_dict, strict=False)
+        logger.info("Reloaded MLP classifier weights, missing={}, unexpected={}".format(missing, unexpected))
+
+    return model
+
+
 def make_compute_metrics():
     """Builds a compute_metrics function reporting token-level accuracy, ignoring -100 labels."""
     def compute_metrics(eval_pred):
@@ -330,6 +353,8 @@ def main(argv):
     with open(os.path.join(args.out, "tags.txt"), "w", encoding="utf-8") as f:
         for tag in tags:
             f.write(tag + "\n")
+    with open(os.path.join(args.out, "classifier_head.txt"), "w", encoding="utf-8") as f:
+        f.write(args.classifier_head)
 
     logger.info("Done")
 
