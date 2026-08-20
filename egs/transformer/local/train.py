@@ -1,107 +1,258 @@
 import argparse
-import csv
+import os
 import sys
 
-import pandas as pd
-import tensorflow as tf
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from sklearn.model_selection import train_test_split
-from tensorflow_addons.text import CRFModelWrapper
+import numpy as np
+import torch
+from datasets import Dataset
+from sklearn.metrics import accuracy_score
+from tqdm import tqdm
+from transformers import (
+    AutoModelForTokenClassification,
+    AutoTokenizer,
+    DataCollatorForTokenClassification,
+    Trainer,
+    TrainingArguments,
+)
 
-from egs.bilstm_crf.local.format_data import format_data
-from egs.bilstm_crf.local.load import load_vocab
-from egs.bilstm_crf.local.prepare_data import make_train_dataset, map_and_batch
 from src.utils.logger import logger
+
+MODEL_NAME = "VSSA-SDSA/LT-MLKM-modernBERT"
+
+# our data uses a custom tag in the last (10th) CoNLL-U column instead of MISC
+TAG_COLUMN = 9
+EXPECTED_COLUMNS = 10
+
+
+def read_conllu(path):
+    """Reads a CoNLL-U-like file into a list of {"words": [...], "tags": [...]} sentences."""
+    sentences = []
+    words = []
+    tags = []
+
+    with open(path, "r", encoding="utf-8") as f:
+        for line in tqdm(f, desc="Reading CoNLL-U file", unit=" lines"):
+            line = line.rstrip("\n")
+
+            if not line:
+                if words:
+                    sentences.append({"words": words, "tags": tags})
+                    words = []
+                    tags = []
+                continue
+
+            if line.startswith("#"):
+                continue
+
+            columns = line.split("\t")
+            if len(columns) != EXPECTED_COLUMNS:
+                raise ValueError("Expected {} columns, got {}: {}".format(EXPECTED_COLUMNS, len(columns), line))
+
+            words.append(columns[1])
+            tags.append(columns[TAG_COLUMN])
+
+    if words:
+        sentences.append({"words": words, "tags": tags})
+
+    return sentences
+
+
+def prepare_tags(sentences):
+    """Builds a sorted tag vocabulary from the given sentences."""
+    tag_set = set()
+    for sentence in sentences:
+        tag_set.update(sentence["tags"])
+    return sorted(tag_set)
+
+
+def tokenize_and_align_labels(words, tags, tokenizer, tag2id):
+    """Tokenizes words and aligns each subword to its word's tag, using -100 for non-first subwords."""
+    encoding = tokenizer(words, is_split_into_words=True)
+
+    labels = []
+    previous_word_id = None
+    for word_id in encoding.word_ids():
+        if word_id is None or word_id == previous_word_id:
+            labels.append(-100)
+        else:
+            labels.append(tag2id[tags[word_id]])
+        previous_word_id = word_id
+
+    return {
+        "input_ids": encoding["input_ids"],
+        "attention_mask": encoding["attention_mask"],
+        "labels": labels,
+    }
+
+
+def build_dataset(sentences, tokenizer, tag2id):
+    """Converts sentences into a tokenized, label-aligned HuggingFace Dataset."""
+    dataset = Dataset.from_dict({
+        "words": [s["words"] for s in sentences],
+        "tags": [s["tags"] for s in sentences],
+    })
+
+    def _process(batch):
+        input_ids, attention_masks, labels = [], [], []
+        for words, tags in zip(batch["words"], batch["tags"]):
+            aligned = tokenize_and_align_labels(words, tags, tokenizer, tag2id)
+            input_ids.append(aligned["input_ids"])
+            attention_masks.append(aligned["attention_mask"])
+            labels.append(aligned["labels"])
+        return {"input_ids": input_ids, "attention_mask": attention_masks, "labels": labels}
+
+    return dataset.map(_process, batched=True, remove_columns=["words", "tags"])
+
+
+def make_compute_metrics():
+    """Builds a compute_metrics function reporting token-level accuracy, ignoring -100 labels."""
+    def compute_metrics(eval_pred):
+        predictions, labels = eval_pred
+        predictions = np.argmax(predictions, axis=-1)
+
+        true_predictions = []
+        true_labels = []
+        for pred_row, label_row in zip(predictions, labels):
+            for pred, label in zip(pred_row, label_row):
+                if label != -100:
+                    true_predictions.append(pred)
+                    true_labels.append(label)
+
+        return {"accuracy": accuracy_score(true_labels, true_predictions)}
+
+    return compute_metrics
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description="Trains bilstm_crf model",
+    parser = argparse.ArgumentParser(description="Trains transformer model",
                                      epilog="E.g. " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--input", nargs='?', required=True, help="Initial conllu file")
-    parser.add_argument("--in_v", nargs='?', required=True, help="Input vocab")
-    parser.add_argument("--in_t", nargs='?', required=True, help="Input tags vocab")
     parser.add_argument("--out", nargs='?', required=True, help="Model output file")
-    parser.add_argument("--hidden", nargs='?', default=200, help="Hidden layer size")
-    parser.add_argument("--batch", nargs='?', default=32, help="Batch size")
-    parser.add_argument("--use_ends", default=False, action=argparse.BooleanOptionalAction,
-                        help="Use endings")
+    parser.add_argument("--epochs", type=float, default=3, help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=16, help="Per-device train/eval batch size")
+    parser.add_argument("--grad_accum_steps", type=int, default=1,
+                         help="Number of steps to accumulate gradients over, to simulate a larger batch size on limited GPU memory")
+    parser.add_argument("--gradient_checkpointing", action="store_true",
+                         help="Trade compute for memory by not storing all activations")
+    parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate")
+    parser.add_argument("--val_size", type=float, default=0.005, help="Fraction of sentences held out for validation")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--freeze_base", action="store_true", 
+                         help="Freeze the pretrained encoder and only train the classification head")
+    parser.add_argument("--max_steps", type=int, default=-1,
+                         help="Stop after this many steps (overrides --epochs), useful for a quick smoke test")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
-    logger.info("loading data {}".format(args.input))
-    data = pd.read_csv(args.input, sep='\t', comment='#', header=None, quotechar=None, quoting=csv.QUOTE_NONE)
-    logger.info("sample data")
-    print(data.head(10), sep='\n\n')
-    lookup_layer = load_vocab(args.in_v, "words")
-    e_lookup_layer = load_vocab(args.in_v + ".end", "endings")
+    logger.info("Loading: {}".format(args.input))
 
-    logger.info("loading tags {}".format(args.in_t))
-    with open(args.in_t, 'r') as f:
-        tags = [w.strip() for w in f]
-    logger.info("tags count {}".format(len(tags)))
-    t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0)
+    sentences = read_conllu(args.input)
+    tags = prepare_tags(sentences)
+    tag2id = {tag: i for i, tag in enumerate(tags)}
+    id2tag = {i: tag for i, tag in enumerate(tags)}
 
-    logger.info("preparing data")
-    data_sent = format_data(data)
-    data_train, data_val = train_test_split(data_sent, test_size=0.1, shuffle=True, random_state=1)
-    logger.info("Data len train: {}".format(len(data_train)))
-    logger.info("Data len val  : {}".format(len(data_val)))
+    token_count = sum(len(s["words"]) for s in sentences)
+    logger.info("Sentences: {}".format(len(sentences)))
+    logger.info("Tokens:    {}".format(token_count))
+    logger.info("Tags:      {}".format(len(tags)))
+    logger.info("First 20 tags:")
+    for i, tag in enumerate(tags[:20]):
+        logger.info("{:4d}  {}".format(i, tag))
 
-    # Model architecture
-    num_tags = len(tags)
-    embedding = 150
-    hidden = int(args.hidden)
-    batch_size = int(args.batch)
-    logger.info("Hidden      : {}".format(hidden))
-    logger.info("Batch size: : {}".format(batch_size))
+    if sentences:
+        first = sentences[1]
+        logger.info("First sentence:")
+        for word, tag in zip(first["words"], first["tags"]):
+            logger.info("{:30s} {}".format(word, tag))
 
-    w_input = tf.keras.layers.Input(shape=(None,))
-    w_output = tf.keras.layers.Embedding(input_dim=len(lookup_layer.get_vocabulary()), output_dim=embedding,
-                                         mask_zero=True)(w_input)
-    input, output = w_input, w_output
-    use_ends = args.use_ends
-    if use_ends:
-        e_input = tf.keras.layers.Input(shape=(None,))
-        e_output = tf.keras.layers.Embedding(input_dim=len(e_lookup_layer.get_vocabulary()), output_dim=50,
-                                             mask_zero=True)(e_input)
-        input = [w_input, e_input]
-        output = tf.keras.layers.concatenate([w_output, e_output])
-    output = tf.keras.layers.Bidirectional(
-        tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1))(output)
-    # output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0.1)(output)
-    # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(20, activation="relu"))(output)
-    m1 = tf.keras.Model(input, output)
-    m1.summary()
-    model = CRFModelWrapper(m1, num_tags)
-    model.compile(optimizer=tf.keras.optimizers.Adam())
-    logger.info(
-        "Tags: {}, first 10: {}".format(len(t_lookup_layer.get_vocabulary()), t_lookup_layer.get_vocabulary()[:10]))
+    logger.info("Loading tokenizer: {}".format(MODEL_NAME))
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    def dataset_preprocess(_tokens, _ends, _tags):
-        r_tokens = lookup_layer(_tokens)
-        r_tags = t_lookup_layer(_tags)
-        if use_ends:
-            r_ends = e_lookup_layer(_ends)
-            return (r_tokens, r_ends), r_tags
-        return r_tokens, r_tags
+    if sentences:
+        aligned = tokenize_and_align_labels(first["words"], first["tags"], tokenizer, tag2id)
+        readable_tokens = [tokenizer.convert_tokens_to_string([t]).strip() or t
+                            for t in tokenizer.convert_ids_to_tokens(aligned["input_ids"])]
+        readable_tags = [id2tag[t] if t != -100 else "-" for t in aligned["labels"]]
+        logger.info("Tokens:     {}".format(readable_tokens))
+        logger.info("Labels:     {}".format(aligned["labels"]))
+        logger.info("Readable:   {}".format(readable_tags))
 
-    train_ds = map_and_batch(make_train_dataset(data_train), dataset_preprocess, batch_size)
-    val_ds = map_and_batch(make_train_dataset(data_val), dataset_preprocess, batch_size)
+    logger.info("Building dataset")
+    dataset = build_dataset(sentences, tokenizer, tag2id)
+    split = dataset.train_test_split(test_size=args.val_size, seed=args.seed)
+    train_dataset, eval_dataset = split["train"], split["test"]
+    logger.info("Train sentences: {}".format(len(train_dataset)))
+    logger.info("Eval sentences:  {}".format(len(eval_dataset)))
 
-    checkpoint = ModelCheckpoint(filepath=args.out + ".tmp",
-                                 monitor='loss',
-                                 verbose=1,
-                                 save_best_only=False,
-                                 mode='min',
-                                 period=5)
-    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
-    model.fit(train_ds, validation_data=val_ds, epochs=15, verbose=1, callbacks=[checkpoint, es])
-    model.summary(150)
-    logger.info('Saving tf model ...')
-    tf.keras.models.save_model(model, args.out)
+    logger.info("Loading model: {}".format(MODEL_NAME))
+    model = AutoModelForTokenClassification.from_pretrained(
+        MODEL_NAME,
+        num_labels=len(tags),
+        id2label=id2tag,
+        label2id=tag2id,
+    )
+    logger.info("Classifier: {}".format(model.classifier))
+
+    if args.freeze_base:
+        logger.info("Freezing base encoder, training classification head only")
+        for param in model.base_model.parameters():
+            param.requires_grad = False
+
+    data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+
+    use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    use_fp16 = torch.cuda.is_available() and not use_bf16
+
+    trainable = sum( p.numel() for p in model.parameters() if p.requires_grad )
+    total = sum(p.numel() for p in model.parameters())
+
+    logger.info(f"Trainable: {trainable:,}")
+    logger.info(f"Total:     {total:,}")
+
+    training_args = TrainingArguments(
+        output_dir=os.path.join(args.out, "checkpoints"),
+        num_train_epochs=args.epochs,
+        per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.batch_size,
+        gradient_accumulation_steps=args.grad_accum_steps,
+        gradient_checkpointing=args.gradient_checkpointing,
+        learning_rate=args.lr,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        logging_steps=50,
+        load_best_model_at_end=True,
+        metric_for_best_model="accuracy",
+        save_total_limit=10,
+        seed=args.seed,
+        bf16=use_bf16,
+        fp16=use_fp16,
+        max_steps=args.max_steps,
+    )
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=data_collator,
+        processing_class=tokenizer,
+        compute_metrics=make_compute_metrics(),
+    )
+
+    logger.info("Training")
+    trainer.train()
+
+    logger.info("Saving model to: {}".format(args.out))
+    trainer.save_model(args.out)
+    tokenizer.save_pretrained(args.out)
+    with open(os.path.join(args.out, "tags.txt"), "w", encoding="utf-8") as f:
+        for tag in tags:
+            f.write(tag + "\n")
+
     logger.info("Done")
 
 
 if __name__ == "__main__":
+
     main(sys.argv[1:])
