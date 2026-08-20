@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import torch
+from torch import nn
 from datasets import Dataset
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
@@ -144,6 +145,25 @@ def parse_tag_weights_file(path, tag2id, default_weight: float = 2.0):
     return weights
 
 
+class MLPClassifierHead(nn.Module):
+    """Two-layer GELU+LayerNorm head, more expressive than a single Linear projection."""
+
+    def __init__(self, hidden_size, num_labels, dropout=0.1):
+        super().__init__()
+        self.dense = nn.Linear(hidden_size, hidden_size)
+        self.activation = nn.GELU()
+        self.norm = nn.LayerNorm(hidden_size)
+        self.dropout = nn.Dropout(dropout)
+        self.out_proj = nn.Linear(hidden_size, num_labels)
+
+    def forward(self, hidden_states):
+        x = self.dense(hidden_states)
+        x = self.activation(x)
+        x = self.norm(x)
+        x = self.dropout(x)
+        return self.out_proj(x)
+
+
 def make_compute_metrics():
     """Builds a compute_metrics function reporting token-level accuracy, ignoring -100 labels."""
     def compute_metrics(eval_pred):
@@ -180,6 +200,8 @@ def main(argv):
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--freeze_base", action="store_true", 
                          help="Freeze the pretrained encoder and only train the classification head")
+    parser.add_argument("--classifier_head", choices=["linear", "mlp"], default="mlp",
+                         help="Classification head on top of the encoder: plain Linear or a 2-layer MLP head")
     parser.add_argument("--max_steps", type=int, default=-1,
                          help="Stop after this many steps (overrides --epochs), useful for a quick smoke test")
     parser.add_argument("--tag_weights_file", nargs='?', default=None,
@@ -241,6 +263,11 @@ def main(argv):
         label2id=tag2id,
     )
     logger.info("Classifier: {}".format(model.classifier))
+
+    if args.classifier_head == "mlp":
+        dropout = getattr(model.config, "classifier_dropout", None) or 0.1
+        model.classifier = MLPClassifierHead(model.config.hidden_size, len(tags), dropout=dropout)
+        logger.info("Replaced classifier with MLP head: {}".format(model.classifier))
 
     if args.freeze_base:
         logger.info("Freezing base encoder, training classification head only")
