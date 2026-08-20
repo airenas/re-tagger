@@ -33,9 +33,10 @@ ${out_dir}/%_wanted.txt: ${out_dir}/%_f.txt
 train: ${model}
 ############################################
 max_steps?=-1
+tag_weights_file?=none
 ${model}: ${out_dir}/train_f.txt
 	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out $@ --max_steps $(max_steps) \
-		--batch_size $(batch) --grad_accum_steps $(grad_accum) --epochs $(epochs)
+		--batch_size $(batch) --grad_accum_steps $(grad_accum) --epochs $(epochs) --tag_weights_file ${tag_weights_file}
 ############################################
 test/test: ${out_dir}/test_pred.txt
 ############################################

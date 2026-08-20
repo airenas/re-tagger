@@ -104,6 +104,46 @@ def build_dataset(sentences, tokenizer, tag2id):
     return dataset.map(_process, batched=True, remove_columns=["words", "tags"])
 
 
+class WeightedTrainer(Trainer):
+    """Trainer using a weighted cross-entropy loss to up-weight critical/confusing tags."""
+
+    def __init__(self, *args, class_weights=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        weight = self.class_weights.to(logits.device) if self.class_weights is not None else None
+        loss_fct = torch.nn.CrossEntropyLoss(weight=weight, ignore_index=-100)
+        loss = loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
+        return (loss, outputs) if return_outputs else loss
+
+
+def init_tag_weights(tag2id):
+    weights = torch.ones(len(tag2id))
+    return weights
+
+
+def parse_tag_weights_file(path, tag2id, default_weight: float = 2.0):
+    """Reads one tag per line (optionally 'TAG\\tWEIGHT') and weights the rest at 1.0."""
+    weights = torch.ones(len(tag2id))
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.rstrip("\n").strip()
+            if not line:
+                continue
+            parts = line.split("=")
+            tag = parts[0].strip()
+            value = float(parts[1]) if len(parts) > 1 else default_weight
+            if tag not in tag2id:
+                raise ValueError("Unknown tag in --tag_weights_file: {}".format(tag))
+            weights[tag2id[tag]] = value
+            logger.info("Tag weight: {} = {}".format(tag, value))
+    return weights
+
+
 def make_compute_metrics():
     """Builds a compute_metrics function reporting token-level accuracy, ignoring -100 labels."""
     def compute_metrics(eval_pred):
@@ -142,6 +182,9 @@ def main(argv):
                          help="Freeze the pretrained encoder and only train the classification head")
     parser.add_argument("--max_steps", type=int, default=-1,
                          help="Stop after this many steps (overrides --epochs), useful for a quick smoke test")
+    parser.add_argument("--tag_weights_file", nargs='?', default=None,
+                         help="File with one problematic tag per line (optionally 'TAG<TAB>WEIGHT'); "
+                              "listed tags get --tag_weights_default_weight (or their own value), all others 1.0")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -206,6 +249,11 @@ def main(argv):
 
     data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
 
+    class_weights = init_tag_weights(tag2id)
+    if args.tag_weights_file and args.tag_weights_file.lower() != "none":
+        logger.info("Tag weights file: {}".format(args.tag_weights_file))
+        class_weights *= parse_tag_weights_file(args.tag_weights_file, tag2id)
+
     use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
     use_fp16 = torch.cuda.is_available() and not use_bf16
 
@@ -235,7 +283,7 @@ def main(argv):
         max_steps=args.max_steps,
     )
 
-    trainer = Trainer(
+    trainer = WeightedTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
@@ -243,6 +291,7 @@ def main(argv):
         data_collator=data_collator,
         processing_class=tokenizer,
         compute_metrics=make_compute_metrics(),
+        class_weights=class_weights,
     )
 
     logger.info("Training")
