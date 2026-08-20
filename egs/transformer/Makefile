@@ -10,15 +10,9 @@ out_model?=tm-0.1
 out_model_path?=${out_dir}/$(out_model)
 python_dir=${CURDIR}/../../src/utils
 nn_params?=--use_ends
-use_ft?=1
-ft_model?=../../data/delfi_cbow.bin
-cuda=
-ifeq ($(no_cuda),1)
-	cuda=CUDA_VISIBLE_DEVICES=""
-endif
 batch?=4
 grad_accum?=4
-hidden?=300
+epochs?=3
 log?=INFO
 python_cmd=PYTHONPATH=../../ $(cuda) LOG_LEVEL=$(log) python
 ############################################
@@ -41,7 +35,7 @@ train: ${model}
 max_steps?=-1
 ${model}: ${out_dir}/train_f.txt
 	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out $@ --max_steps $(max_steps) \
-		--batch_size $(batch) --grad_accum_steps $(grad_accum)
+		--batch_size $(batch) --grad_accum_steps $(grad_accum) --epochs $(epochs)
 ############################################
 test/test: ${out_dir}/test_pred.txt
 ############################################
@@ -110,6 +104,12 @@ build/data/docker/push:
 info:
 	@echo pack data = ${out_dir}/
 	@echo version 	= ${version}
+	@echo out_model 	= ${out_model}
+	@echo out_model_path = ${out_model_path}
+	@echo epochs 	= ${epochs}
+	@echo batch 	= ${batch}
+	@echo grad_accum 	= ${grad_accum}
+	@echo max_steps 	= ${max_steps}
 .PHONY: info
 ############################################
 build: test/train test/test

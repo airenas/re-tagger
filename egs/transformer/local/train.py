@@ -136,7 +136,7 @@ def main(argv):
     parser.add_argument("--gradient_checkpointing", action="store_true",
                          help="Trade compute for memory by not storing all activations")
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate")
-    parser.add_argument("--val_size", type=float, default=0.005, help="Fraction of sentences held out for validation")
+    parser.add_argument("--val_size", type=float, default=0.02, help="Fraction of sentences held out for validation")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--freeze_base", action="store_true", 
                          help="Freeze the pretrained encoder and only train the classification head")
@@ -146,6 +146,11 @@ def main(argv):
 
     logger.info("Starting")
     logger.info("Loading: {}".format(args.input))
+    logger.info(f"Epochs:  {args.epochs}")
+    logger.info(f"Batch size:  {args.batch_size}")
+    logger.info(f"Grad accum steps:  {args.grad_accum_steps}")
+    logger.info(f"Gradient checkpointing:  {args.gradient_checkpointing}")
+    logger.info(f"Max steps:  {args.max_steps}")
 
     sentences = read_conllu(args.input)
     tags = prepare_tags(sentences)
