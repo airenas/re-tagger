@@ -183,6 +183,9 @@ def load_finetuned_model(model_dir):
             state_dict = torch.load(os.path.join(model_dir, "pytorch_model.bin"), map_location="cpu")
         missing, unexpected = model.load_state_dict(state_dict, strict=False)
         logger.info("Reloaded MLP classifier weights, missing={}, unexpected={}".format(missing, unexpected))
+        # load_state_dict keeps the destination's dtype (float32); match the encoder's dtype (e.g. bf16)
+        encoder_dtype = next(model.base_model.parameters()).dtype
+        model.classifier = model.classifier.to(dtype=encoder_dtype)
 
     return model
 
