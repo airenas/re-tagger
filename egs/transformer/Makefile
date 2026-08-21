@@ -30,7 +30,8 @@ ${out_dir}/%_wanted.txt: ${out_dir}/%_f.txt
 	$(python_cmd) ../test_data/local/to_plain.py --input $^ > $@_
 	mv $@_ $@	
 ############################################
-train: ${model}
+train: ${model}/.done
+.PHONY: train
 ############################################
 max_steps?=-1
 tag_weights_file?=none

@@ -15,6 +15,7 @@ from transformers import (
 )
 
 from egs.transformer.local.train import (
+    MLPClassifierHead,
     build_dataset,
     load_finetuned_model,
     prepare_tags,
@@ -139,6 +140,8 @@ def main(argv):
         args.heads,
     )
     student = ModernBertForTokenClassification(student_config)
+    classifier_dropout = getattr(student.config, "classifier_dropout", None) or 0.1
+    student.classifier = MLPClassifierHead(args.hidden_size, len(tags), dropout=classifier_dropout)
     student.hidden_projection = torch.nn.Linear(args.hidden_size, teacher.config.hidden_size)
     logger.info("Student parameters: {:,}".format(sum(parameter.numel() for parameter in student.parameters())))
 
@@ -184,6 +187,8 @@ def main(argv):
     tokenizer.save_pretrained(args.out)
     with open(os.path.join(args.out, "tags.txt"), "w", encoding="utf-8") as output:
         output.write("\n".join(tags) + "\n")
+    with open(os.path.join(args.out, "classifier_head.txt"), "w", encoding="utf-8") as output:
+        output.write("mlp")
     logger.info("Done")
 
 
