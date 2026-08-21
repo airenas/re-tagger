@@ -49,6 +49,12 @@ def main(argv):
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = load_finetuned_model(args.model).to(device)
     model.eval()
+    total_params = sum(p.numel() for p in model.parameters())
+    logger.info(f"Total parameters: {total_params:,}")
+    for name, module in model.named_modules():
+        params = sum(p.numel() for p in module.parameters(recurse=False))
+        if params:
+            logger.info(f"{name:40} {params:,}")
 
     logger.info("Loading: {}".format(args.input))
     sentences = read_conllu(args.input)
