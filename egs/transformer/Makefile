@@ -34,13 +34,31 @@ train: ${model}
 ############################################
 max_steps?=-1
 tag_weights_file?=none
-${model}: ${out_dir}/train_f.txt
+teacher_model?=${model}
+distill_model?=${out_dir}/models/morph-distilled/1
+distill_layers?=4
+distill_hidden_size?=384
+distill_heads?=6
+distill_temperature?=2.0
+distill_alpha?=0.3
+distill_hidden_alpha?=0.2
+${model}/.done: ${out_dir}/train_f.txt
 	$(python_cmd) local/train.py --input ${out_dir}/train_f.txt --out $@ --max_steps $(max_steps) \
 		--batch_size $(batch) --grad_accum_steps $(grad_accum) --epochs $(epochs) --tag_weights_file ${tag_weights_file}
+	touch ${model}/.done
+############################################
+distill: ${distill_model}/.done
+.PHONY: distill
+${distill_model}/.done: ${out_dir}/train_f.txt ${teacher_model}/.done
+	$(python_cmd) local/distill.py --input ${out_dir}/train_f.txt --teacher ${teacher_model} --out $@ \
+		--layers $(distill_layers) --hidden_size $(distill_hidden_size) --heads $(distill_heads) \
+		--epochs $(epochs) --batch_size $(batch) --grad_accum_steps $(grad_accum) \
+		--temperature $(distill_temperature) --alpha $(distill_alpha) --hidden_alpha $(distill_hidden_alpha)
+	touch ${distill_model}/.done	
 ############################################
 test/test: ${out_dir}/test_pred.txt
 ############################################
-${out_dir}/%_pred.txt: ${model} ${out_dir}/%_f.txt
+${out_dir}/%_pred.txt: ${model}/.done ${out_dir}/%_f.txt
 	$(python_cmd) local/predict.py --input ${out_dir}/$*_f.txt --model ${model} --out $@_
 	mv $@_ $@
 .PRECIOUS: ${out_dir}/train_pred.txt ${out_dir}/test_pred.txt
