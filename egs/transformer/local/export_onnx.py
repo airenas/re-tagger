@@ -30,7 +30,7 @@ def main(argv):
     logger.info("Loading tokenizer: {}".format(args.model))
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     logger.info("Loading model: {}".format(args.model))
-    model = load_finetuned_model(args.model).cpu().eval()
+    model = load_finetuned_model(args.model).cpu().float().eval()
     wrapper = TokenClassifierExportWrapper(model)
 
     encoded = tokenizer("ONNX export sample", return_tensors="pt")
