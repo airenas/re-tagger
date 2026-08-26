@@ -1,21 +1,23 @@
 import argparse
+import json
 import os
 import sys
+from dataclasses import dataclass
+from typing import Dict, Any, List
 
 import numpy as np
 import torch
-from torch import nn
 from datasets import Dataset
 from sklearn.metrics import accuracy_score
+from torch import nn
 from tqdm import tqdm
 from transformers import (
-    AutoModelForTokenClassification,
     AutoTokenizer,
-    DataCollatorForTokenClassification,
     Trainer,
-    TrainingArguments,
-)
+    TrainingArguments, )
 
+from egs.transformer.local.model import MultiHeadTokenClassifier
+from egs.transformer.local.morph import to_tags, feature_tags, feature_tags_loss_weights
 from src.utils.logger import logger
 
 MODEL_NAME = "VSSA-SDSA/LT-MLKM-modernBERT"
@@ -23,6 +25,39 @@ MODEL_NAME = "VSSA-SDSA/LT-MLKM-modernBERT"
 # our data uses a custom tag in the last (10th) CoNLL-U column instead of MISC
 TAG_COLUMN = 9
 EXPECTED_COLUMNS = 10
+
+
+@dataclass
+class DataCollatorForMultiHeadTokenClassification:
+    tokenizer: Any
+    padding: bool = True
+
+    def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
+        # Extract label columns dynamically (keys starting with 'labels_')
+        label_keys = [k for k in features[0].keys() if k.startswith("labels_")]
+
+        # Extract non-label inputs (input_ids, attention_mask)
+        non_label_features = [
+            {k: v for k, v in f.items() if not k.startswith("labels_")}
+            for f in features
+        ]
+
+        # Pad standard tokenizer inputs
+        batch = self.tokenizer.pad(non_label_features, padding=self.padding, return_tensors="pt")
+
+        # Find batch maximum length
+        batch_max_len = batch["input_ids"].shape[1]
+
+        # Pad label sequences with -100 to match batch_max_len
+        for label_key in label_keys:
+            padded_labels = []
+            for f in features:
+                seq = f[label_key]
+                padded = seq + [-100] * (batch_max_len - len(seq))
+                padded_labels.append(padded)
+            batch[label_key] = torch.tensor(padded_labels, dtype=torch.long)
+
+        return batch
 
 
 def read_conllu(path):
@@ -50,7 +85,7 @@ def read_conllu(path):
                 raise ValueError("Expected {} columns, got {}: {}".format(EXPECTED_COLUMNS, len(columns), line))
 
             words.append(columns[1])
-            tags.append(columns[TAG_COLUMN])
+            tags.append(to_tags(columns[TAG_COLUMN]))
 
     if words:
         sentences.append({"words": words, "tags": tags})
@@ -58,153 +93,180 @@ def read_conllu(path):
     return sentences
 
 
-def prepare_tags(sentences):
+def prepare_tags(sentences, features):
     """Builds a sorted tag vocabulary from the given sentences."""
-    tag_set = set()
-    for sentence in sentences:
-        tag_set.update(sentence["tags"])
-    return sorted(tag_set)
+    res = {}
+    for feature in features:
+        tag_set = set()
+        for sentence in sentences:
+            for tags in sentence["tags"]:
+                f = tags.get(feature, "")
+                if f:
+                    tag_set.add(f)
+        res[feature] = sorted(tag_set)
+    return res
 
 
-def tokenize_and_align_labels(words, tags, tokenizer, tag2id):
-    """Tokenizes words and aligns each subword to its word's tag, using -100 for non-first subwords."""
+def tokenize_and_align_labels(words, tags, tokenizer, tag2id, feature_tags):
     encoding = tokenizer(words, is_split_into_words=True)
 
-    labels = []
+    labels_dict = {f"labels_{feat}": [] for feat in feature_tags}
+
     previous_word_id = None
     for word_id in encoding.word_ids():
         if word_id is None or word_id == previous_word_id:
-            labels.append(-100)
+            # Mask out non-first subwords and special tokens for all heads
+            for feat in feature_tags:
+                labels_dict[f"labels_{feat}"].append(-100)
         else:
-            labels.append(tag2id[tags[word_id]])
+            # Look up the target tag ID for each feature
+            for feat in feature_tags:
+                tag_str = tags[word_id].get(feat, "")
+                if tag_str == "":
+                    labels_dict[f"labels_{feat}"].append(-100)
+                else:
+                    labels_dict[f"labels_{feat}"].append(tag2id[feat][tag_str])
+
         previous_word_id = word_id
 
     return {
         "input_ids": encoding["input_ids"],
         "attention_mask": encoding["attention_mask"],
-        "labels": labels,
+        **labels_dict,
     }
 
 
-def build_dataset(sentences, tokenizer, tag2id):
-    """Converts sentences into a tokenized, label-aligned HuggingFace Dataset."""
+def build_dataset(sentences, tokenizer, tag2id, feature_tags):
+    """Converts sentences into a tokenized, multi-label aligned HuggingFace Dataset."""
     dataset = Dataset.from_dict({
         "words": [s["words"] for s in sentences],
         "tags": [s["tags"] for s in sentences],
     })
 
     def _process(batch):
-        input_ids, attention_masks, labels = [], [], []
+        # Dynamically initialize output storage for input_ids, attention_mask, and all feature label columns
+        batch_outputs = {
+            "input_ids": [],
+            "attention_mask": [],
+            **{f"labels_{feat}": [] for feat in feature_tags}
+        }
+
         for words, tags in zip(batch["words"], batch["tags"]):
-            aligned = tokenize_and_align_labels(words, tags, tokenizer, tag2id)
-            input_ids.append(aligned["input_ids"])
-            attention_masks.append(aligned["attention_mask"])
-            labels.append(aligned["labels"])
-        return {"input_ids": input_ids, "attention_mask": attention_masks, "labels": labels}
+            aligned = tokenize_and_align_labels(words, tags, tokenizer, tag2id, feature_tags)
+            for key, value in aligned.items():
+                batch_outputs[key].append(value)
+
+        return batch_outputs
 
     return dataset.map(_process, batched=True, remove_columns=["words", "tags"])
 
 
 class WeightedTrainer(Trainer):
-    """Trainer using a weighted cross-entropy loss to up-weight critical/confusing tags."""
+    """Multi-task trainer computing weighted cross-entropy across feature heads."""
 
-    def __init__(self, *args, class_weights=None, **kwargs):
+    def __init__(self, *args, feature_loss_weights=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.class_weights = class_weights
+        self.feature_loss_weights = feature_loss_weights or {}
 
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
-        labels = inputs.pop("labels")
-        outputs = model(**inputs)
-        logits = outputs.logits
-        weight = self.class_weights.to(logits.device) if self.class_weights is not None else None
-        loss_fct = torch.nn.CrossEntropyLoss(weight=weight, ignore_index=-100)
-        loss = loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
-        return (loss, outputs) if return_outputs else loss
+        # Extract dynamic target labels
+        labels_dict = {
+            k.replace("labels_", ""): inputs.pop(k)
+            for k in list(inputs.keys())
+            if k.startswith("labels_")
+        }
 
+        logits_dict = model(**inputs)
 
-def init_tag_weights(tag2id):
-    weights = torch.ones(len(tag2id))
-    return weights
+        losses = {}
+        for head_name, logits in logits_dict.items():
+            if head_name in labels_dict:
+                labels = labels_dict[head_name]
+                loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
+                head_loss = loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
+                losses[labels] = head_loss
 
+        if not losses:
+            raise ValueError(
+                f"No matching label heads found! "
+                f"Model heads: {list(logits_dict.keys())}, "
+                f"Batch label keys: {list(labels_dict.keys())}"
+            )
 
-def parse_tag_weights_file(path, tag2id, default_weight: float = 2.0):
-    """Reads one tag per line (optionally 'TAG\\tWEIGHT') and weights the rest at 1.0."""
-    weights = torch.ones(len(tag2id))
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.rstrip("\n").strip()
-            if not line:
-                continue
-            parts = line.split("=")
-            tag = parts[0].strip()
-            value = float(parts[1]) if len(parts) > 1 else default_weight
-            if tag not in tag2id:
-                raise ValueError("Unknown tag in --tag_weights_file: {}".format(tag))
-            weights[tag2id[tag]] = value
-            logger.info("Tag weight: {} = {}".format(tag, value))
-    return weights
+        # Sum losses into a PyTorch Tensor that tracks gradients
+        total_loss = sum(
+            self.feature_loss_weights.get(head_name, 1.0) * head_loss
+            for head_name, head_loss in losses.items()
+        )
 
+        return (total_loss, logits_dict) if return_outputs else total_loss
 
-class MLPClassifierHead(nn.Module):
-    """Two-layer GELU+LayerNorm head, more expressive than a single Linear projection."""
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        """Custom evaluation step keeping PyTorch Tensors on CPU."""
+        has_labels = any(k.startswith("labels_") for k in inputs.keys())
 
-    def __init__(self, hidden_size, num_labels, dropout=0.1):
-        super().__init__()
-        self.dense = nn.Linear(hidden_size, hidden_size)
-        self.activation = nn.GELU()
-        self.norm = nn.LayerNorm(hidden_size)
-        self.dropout = nn.Dropout(dropout)
-        self.out_proj = nn.Linear(hidden_size, num_labels)
+        # Pull out target labels
+        labels_dict = {
+            k.replace("labels_", ""): inputs[k]
+            for k in list(inputs.keys())
+            if k.startswith("labels_")
+        }
 
-    def forward(self, hidden_states):
-        x = self.dense(hidden_states)
-        x = self.activation(x)
-        x = self.norm(x)
-        x = self.dropout(x)
-        return self.out_proj(x)
+        with torch.no_grad():
+            if has_labels:
+                with self.compute_loss_context_manager():
+                    loss, logits_dict = self.compute_loss(model, inputs, return_outputs=True)
+                loss = loss.mean().detach()
+            else:
+                loss = None
+                logits_dict = model(**inputs)
 
+        if prediction_loss_only:
+            return (loss, None, None)
 
-def load_finetuned_model(model_dir):
-    """Loads a fine-tuned model dir, rebuilding a custom classifier head (if used) before reloading its weights."""
-    model = AutoModelForTokenClassification.from_pretrained(model_dir)
+        # Move tensors to CPU, but DO NOT convert to numpy here
+        logits_dict = {k: v.detach().cpu() for k, v in logits_dict.items()}
+        labels_dict = {k: v.detach().cpu() for k, v in labels_dict.items()}
 
-    head_path = os.path.join(model_dir, "classifier_head.txt")
-    classifier_head = open(head_path, encoding="utf-8").read().strip() if os.path.exists(head_path) else "linear"
-
-    if classifier_head == "mlp":
-        dropout = getattr(model.config, "classifier_dropout", None) or 0.1
-        model.classifier = MLPClassifierHead(model.config.hidden_size, model.config.num_labels, dropout=dropout)
-        # from_pretrained already discarded the mismatched classifier.* weights above; reload them now
-        from safetensors.torch import load_file
-        safetensors_path = os.path.join(model_dir, "model.safetensors")
-        if os.path.exists(safetensors_path):
-            state_dict = load_file(safetensors_path)
-        else:
-            state_dict = torch.load(os.path.join(model_dir, "pytorch_model.bin"), map_location="cpu")
-        missing, unexpected = model.load_state_dict(state_dict, strict=False)
-        logger.info("Reloaded MLP classifier weights, missing={}, unexpected={}".format(missing, unexpected))
-        # load_state_dict keeps the destination's dtype (float32); match the encoder's dtype (e.g. bf16)
-        encoder_dtype = next(model.base_model.parameters()).dtype
-        model.classifier = model.classifier.to(dtype=encoder_dtype)
-
-    return model
+        return (loss, logits_dict, labels_dict)
 
 
 def make_compute_metrics():
-    """Builds a compute_metrics function reporting token-level accuracy, ignoring -100 labels."""
+    """Computes token-level accuracy per head and overall mean accuracy."""
+
     def compute_metrics(eval_pred):
-        predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=-1)
+        predictions, labels = eval_pred.predictions, eval_pred.label_ids
 
-        true_predictions = []
-        true_labels = []
-        for pred_row, label_row in zip(predictions, labels):
-            for pred, label in zip(pred_row, label_row):
-                if label != -100:
-                    true_predictions.append(pred)
-                    true_labels.append(label)
+        # Safety check if HF unpacked dicts as tuples
+        if isinstance(predictions, (tuple, list)):
+            predictions = predictions[0] if len(predictions) == 1 else predictions
+        if isinstance(labels, (tuple, list)):
+            labels = labels[0] if len(labels) == 1 else labels
 
-        return {"accuracy": accuracy_score(true_labels, true_predictions)}
+        metrics = {}
+        accuracies = []
+
+        for head_name, pred_logits in predictions.items():
+            if head_name not in labels:
+                continue
+
+            head_labels = labels[head_name]
+            preds = np.argmax(pred_logits, axis=-1)
+
+            true_preds, true_labels = [], []
+            for pred_row, label_row in zip(preds, head_labels):
+                for p, l in zip(pred_row, label_row):
+                    if l != -100:
+                        true_preds.append(p)
+                        true_labels.append(l)
+
+            acc = accuracy_score(true_labels, true_preds) if true_labels else 0.0
+            metrics[f"{head_name}_accuracy"] = acc
+            accuracies.append(acc)
+
+        # Map overall accuracy -> Trainer turns this into 'eval_accuracy'
+        metrics["accuracy"] = float(np.mean(accuracies)) if accuracies else 0.0
+        return metrics
 
     return compute_metrics
 
@@ -218,21 +280,19 @@ def main(argv):
     parser.add_argument("--epochs", type=float, default=3, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=16, help="Per-device train/eval batch size")
     parser.add_argument("--grad_accum_steps", type=int, default=1,
-                         help="Number of steps to accumulate gradients over, to simulate a larger batch size on limited GPU memory")
+                        help="Number of steps to accumulate gradients over, to simulate a larger batch size on limited GPU memory")
     parser.add_argument("--gradient_checkpointing", action="store_true",
-                         help="Trade compute for memory by not storing all activations")
+                        help="Trade compute for memory by not storing all activations")
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate")
     parser.add_argument("--val_size", type=float, default=0.02, help="Fraction of sentences held out for validation")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument("--freeze_base", action="store_true", 
-                         help="Freeze the pretrained encoder and only train the classification head")
-    parser.add_argument("--classifier_head", choices=["linear", "mlp"], default="mlp",
-                         help="Classification head on top of the encoder: plain Linear or a 2-layer MLP head")
+    parser.add_argument("--freeze_base", action="store_true",
+                        help="Freeze the pretrained encoder and only train the classification head")
     parser.add_argument("--max_steps", type=int, default=-1,
-                         help="Stop after this many steps (overrides --epochs), useful for a quick smoke test")
+                        help="Stop after this many steps (overrides --epochs), useful for a quick smoke test")
     parser.add_argument("--tag_weights_file", nargs='?', default=None,
-                         help="File with one problematic tag per line (optionally 'TAG<TAB>WEIGHT'); "
-                              "listed tags get --tag_weights_default_weight (or their own value), all others 1.0")
+                        help="File with one problematic tag per line (optionally 'TAG<TAB>WEIGHT'); "
+                             "listed tags get --tag_weights_default_weight (or their own value), all others 1.0")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -244,17 +304,29 @@ def main(argv):
     logger.info(f"Max steps:  {args.max_steps}")
 
     sentences = read_conllu(args.input)
-    tags = prepare_tags(sentences)
-    tag2id = {tag: i for i, tag in enumerate(tags)}
-    id2tag = {i: tag for i, tag in enumerate(tags)}
+    tags = prepare_tags(sentences, feature_tags)
+
+    # Nested dictionaries mapping each feature to its tag-to-id / id-to-tag dicts
+    tag2id = {
+        feature: {tag: i for i, tag in enumerate(f_tags)}
+        for feature, f_tags in tags.items()
+    }
+
+    id2tag = {
+        feature: {i: tag for i, tag in enumerate(f_tags)}
+        for feature, f_tags in tags.items()
+    }
 
     token_count = sum(len(s["words"]) for s in sentences)
     logger.info("Sentences: {}".format(len(sentences)))
     logger.info("Tokens:    {}".format(token_count))
-    logger.info("Tags:      {}".format(len(tags)))
-    logger.info("First 20 tags:")
-    for i, tag in enumerate(tags[:20]):
-        logger.info("{:4d}  {}".format(i, tag))
+    for feature, f_tags in tags.items():
+        logger.info("Feature: {}  Tags: {}".format(feature, len(f_tags)))
+        logger.info("Tags for {}: {}".format(feature, f_tags))
+        logger.info("Loss weight for {}: {}".format(feature, feature_tags_loss_weights.get(feature, 1.0)))
+
+    logger.info("Loading tokenizer: {}".format(MODEL_NAME))
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     if sentences:
         first = sentences[1]
@@ -262,55 +334,43 @@ def main(argv):
         for word, tag in zip(first["words"], first["tags"]):
             logger.info("{:30s} {}".format(word, tag))
 
-    logger.info("Loading tokenizer: {}".format(MODEL_NAME))
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-
-    if sentences:
-        aligned = tokenize_and_align_labels(first["words"], first["tags"], tokenizer, tag2id)
+        aligned = tokenize_and_align_labels(first["words"], first["tags"], tokenizer, tag2id, feature_tags)
         readable_tokens = [tokenizer.convert_tokens_to_string([t]).strip() or t
-                            for t in tokenizer.convert_ids_to_tokens(aligned["input_ids"])]
-        readable_tags = [id2tag[t] if t != -100 else "-" for t in aligned["labels"]]
+                           for t in tokenizer.convert_ids_to_tokens(aligned["input_ids"])]
         logger.info("Tokens:     {}".format(readable_tokens))
-        logger.info("Labels:     {}".format(aligned["labels"]))
-        logger.info("Readable:   {}".format(readable_tags))
+        for feature in feature_tags:
+            logger.info(f"Labels {feature}:     {aligned["labels_{}".format(feature)]}")
+            readable_tags = [id2tag[feature][t] if t != -100 else "-" for t in aligned[f"labels_{feature}"]]
+            logger.info("Readable {}: {}".format(feature, readable_tags))
 
     logger.info("Building dataset")
-    dataset = build_dataset(sentences, tokenizer, tag2id)
+    dataset = build_dataset(sentences, tokenizer, tag2id, feature_tags)
     split = dataset.train_test_split(test_size=args.val_size, seed=args.seed)
     train_dataset, eval_dataset = split["train"], split["test"]
     logger.info("Train sentences: {}".format(len(train_dataset)))
     logger.info("Eval sentences:  {}".format(len(eval_dataset)))
 
     logger.info("Loading model: {}".format(MODEL_NAME))
-    model = AutoModelForTokenClassification.from_pretrained(
-        MODEL_NAME,
-        num_labels=len(tags),
-        id2label=id2tag,
-        label2id=tag2id,
+    feature_num_labels = {feat: len(tags[feat]) for feat in feature_tags}
+    model = MultiHeadTokenClassifier(
+        model_name=MODEL_NAME,
+        feature_num_labels=feature_num_labels,
     )
-    logger.info("Classifier: {}".format(model.classifier))
-
-    if args.classifier_head == "mlp":
-        dropout = getattr(model.config, "classifier_dropout", None) or 0.1
-        model.classifier = MLPClassifierHead(model.config.hidden_size, len(tags), dropout=dropout)
-        logger.info("Replaced classifier with MLP head: {}".format(model.classifier))
+    logger.info("Loaded multi-head model with heads: {}".format(list(model.heads.keys())))
+    for feat, head in model.heads.items():
+        logger.info(f"  Head [{feat}]: {head}")
 
     if args.freeze_base:
         logger.info("Freezing base encoder, training classification head only")
         for param in model.base_model.parameters():
             param.requires_grad = False
 
-    data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
-
-    class_weights = init_tag_weights(tag2id)
-    if args.tag_weights_file and args.tag_weights_file.lower() != "none":
-        logger.info("Tag weights file: {}".format(args.tag_weights_file))
-        class_weights *= parse_tag_weights_file(args.tag_weights_file, tag2id)
+    data_collator = DataCollatorForMultiHeadTokenClassification(tokenizer=tokenizer)
 
     use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
     use_fp16 = torch.cuda.is_available() and not use_bf16
 
-    trainable = sum( p.numel() for p in model.parameters() if p.requires_grad )
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
 
     logger.info(f"Trainable: {trainable:,}")
@@ -326,16 +386,18 @@ def main(argv):
         learning_rate=args.lr,
         eval_strategy="epoch",
         save_strategy="epoch",
-        logging_steps=50,
+        logging_steps=10,
         load_best_model_at_end=True,
-        metric_for_best_model="accuracy",
+        metric_for_best_model="accuracy",  # Monitors average accuracy across all heads
         save_total_limit=10,
         seed=args.seed,
         bf16=use_bf16,
         fp16=use_fp16,
         max_steps=args.max_steps,
+        remove_unused_columns=False,
     )
 
+    # Note: Ensure class_weights is a dictionary mapping head names to weight tensors, e.g. {"pos": ..., "gender": ...}
     trainer = WeightedTrainer(
         model=model,
         args=training_args,
@@ -344,7 +406,7 @@ def main(argv):
         data_collator=data_collator,
         processing_class=tokenizer,
         compute_metrics=make_compute_metrics(),
-        class_weights=class_weights,
+        feature_loss_weights=feature_tags_loss_weights,
     )
 
     logger.info("Training")
@@ -353,15 +415,22 @@ def main(argv):
     logger.info("Saving model to: {}".format(args.out))
     trainer.save_model(args.out)
     tokenizer.save_pretrained(args.out)
-    with open(os.path.join(args.out, "tags.txt"), "w", encoding="utf-8") as f:
-        for tag in tags:
-            f.write(tag + "\n")
-    with open(os.path.join(args.out, "classifier_head.txt"), "w", encoding="utf-8") as f:
-        f.write(args.classifier_head)
+    model.config.save_pretrained(args.out)
 
+    label_config = {
+        "features": feature_tags,
+        "tag2id": tag2id,
+        "id2tag": id2tag,
+    }
+
+    # Save as labels.json
+    labels_json_path = os.path.join(args.out, "labels.json")
+    with open(labels_json_path, "w", encoding="utf-8") as f:
+        json.dump(label_config, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"Saved label mappings to {labels_json_path}")
     logger.info("Done")
 
 
 if __name__ == "__main__":
-
     main(sys.argv[1:])
