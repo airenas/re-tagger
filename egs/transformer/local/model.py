@@ -45,6 +45,7 @@ class MultiHeadTokenClassifier(nn.Module):
             self.base_model = AutoModel.from_config(self.config)
 
         self.heads = nn.ModuleDict()
+        self.feature_num_labels = feature_num_labels or {}
         hidden_size = self.config.hidden_size
 
         for feat, num_labels in feature_num_labels.items():
