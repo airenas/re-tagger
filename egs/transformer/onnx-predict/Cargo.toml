@@ -1,0 +1,10 @@
+[package]
+name = "onnx-predict"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+ort = { version = "2.0.0-rc.13", features = ["copy-dylibs", "load-dynamic"] }
+tokenizers = "0.22"
+ndarray = "0.17"
