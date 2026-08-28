@@ -5,6 +5,7 @@ from typing import Dict
 import torch
 from torch import nn
 from transformers import AutoConfig, AutoModel, AutoTokenizer
+from peft import LoraConfig, TaskType, get_peft_model
 
 
 class MLPClassifierHead(nn.Module):
@@ -31,7 +32,7 @@ class MultiHeadTokenClassifier(nn.Module):
 
     def __init__(self, model_name: str = "", config: AutoConfig = None, feature_num_labels: Dict[str, int] = None,
                  dropout=0.1,
-                 load_encoder_weights=True):
+                 load_encoder_weights=True, use_lora=True):
         super().__init__()
 
         if config:
@@ -43,6 +44,20 @@ class MultiHeadTokenClassifier(nn.Module):
             self.base_model = AutoModel.from_pretrained(model_name, config=self.config)
         else:
             self.base_model = AutoModel.from_config(self.config)
+
+        if use_lora:
+            lora_config = LoraConfig(
+                task_type=TaskType.TOKEN_CLS,
+                r=16,
+                lora_alpha=32,
+                lora_dropout=0.1,
+                bias="none",
+                target_modules=["Wqkv", "out_proj", "in_proj"],
+            )
+            self.base_model = get_peft_model(
+                self.base_model,
+                lora_config,
+            )
 
         self.heads = nn.ModuleDict()
         self.feature_num_labels = feature_num_labels or {}
