@@ -7,6 +7,7 @@ import torch
 from torch import nn
 from datasets import Dataset
 from sklearn.metrics import accuracy_score
+from torch.optim import AdamW
 from tqdm import tqdm
 from transformers import (
     AutoModelForTokenClassification,
@@ -163,6 +164,35 @@ class MLPClassifierHead(nn.Module):
         x = self.dropout(x)
         return self.out_proj(x)
 
+
+def get_discriminative_params(model, base_lr=2e-5, head_lr=1e-3, weight_decay=0.01):
+    no_decay = ["bias", "LayerNorm.weight"]
+
+    base_params = model.base_model.named_parameters()
+    head_params = model.classifier.named_parameters()
+
+    return [
+        {
+            "params": [p for n, p in base_params if not any(nd in n for nd in no_decay)],
+            "weight_decay": weight_decay,
+            "lr": base_lr,
+        },
+        {
+            "params": [p for n, p in base_params if any(nd in n for nd in no_decay)],
+            "weight_decay": 0.0,
+            "lr": base_lr,
+        },
+        {
+            "params": [p for n, p in head_params if not any(nd in n for nd in no_decay)],
+            "weight_decay": weight_decay,
+            "lr": head_lr,
+        },
+        {
+            "params": [p for n, p in head_params if any(nd in n for nd in no_decay)],
+            "weight_decay": 0.0,
+            "lr": head_lr,
+        },
+    ]
 
 def load_finetuned_model(model_dir):
     """Loads a fine-tuned model dir, rebuilding a custom classifier head (if used) before reloading its weights."""
@@ -336,6 +366,8 @@ def main(argv):
         max_steps=args.max_steps,
     )
 
+    optimizer = AdamW(get_discriminative_params(model, base_lr=args.lr, head_lr=1e-3))
+
     trainer = WeightedTrainer(
         model=model,
         args=training_args,
@@ -345,6 +377,7 @@ def main(argv):
         processing_class=tokenizer,
         compute_metrics=make_compute_metrics(),
         class_weights=class_weights,
+        optimizers=(optimizer, None)
     )
 
     logger.info("Training")
