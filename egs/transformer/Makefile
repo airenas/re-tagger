@@ -37,8 +37,9 @@ max_steps?=-1
 tag_weights_file?=none
 teacher_model?=${model}
 distill_model?=${out_dir}/models/morph-distilled/1
-distill_layers?=4
-distill_hidden_size?=384
+distill_layers?=6
+layer_indices?=0,4,8,12,17,21
+distill_hidden_size?=768
 distill_heads?=6
 distill_temperature?=2.0
 distill_alpha?=0.3
@@ -52,7 +53,7 @@ distill: ${distill_model}/.done
 .PHONY: distill
 ${distill_model}/.done: ${out_dir}/train_f.txt ${teacher_model}/.done
 	$(python_cmd) local/distill.py --input ${out_dir}/train_f.txt --teacher ${teacher_model} --out ${distill_model} \
-		--layers $(distill_layers) --hidden_size $(distill_hidden_size) --heads $(distill_heads) \
+		--layers $(distill_layers) --layer_indices $(layer_indices) --hidden_size $(distill_hidden_size) --heads $(distill_heads) \
 		--epochs $(epochs) --batch_size $(batch) --grad_accum_steps $(grad_accum) \
 		--temperature $(distill_temperature) --alpha $(distill_alpha) --hidden_alpha $(distill_hidden_alpha)
 	touch ${distill_model}/.done	
