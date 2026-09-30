@@ -67,11 +67,14 @@ def main(argv):
                     ws += 1
                 else:
                     if not line.startswith("#"):
-                        line = line.replace("#", "_")
-                        wrds = line.split("\t")
-                        wrds[9] = wrds[9].partition("Multext=")[2]
-                        wrds[9] = fix_label(wrds[9])
-                        line = "\t".join(wrds)
+                        try:
+                            line = line.replace("#", "_")
+                            wrds = line.split("\t")
+                            wrds[9] = wrds[9].partition("Multext=")[2]
+                            wrds[9] = fix_label(wrds[9])
+                            line = "\t".join(wrds)
+                        except BaseException as ex:
+                            raise RuntimeError(f"line '{line}'. {ex}")    
                     print(line)
             print()
 

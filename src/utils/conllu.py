@@ -1,3 +1,4 @@
+import logging
 import sys
 
 
@@ -56,7 +57,7 @@ class ConlluReader:
 
     def __enter__(self):
         self.fd = open(self.path, 'r')
-        print("Opened %s" % self.path, file=sys.stderr)
+        logging.info("Opened %s" % self.path)
         return self
 
     def __exit__(self, type, value, traceback):
