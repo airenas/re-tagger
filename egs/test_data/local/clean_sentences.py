@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 
+from pygments.lexer import words
 from tqdm import tqdm
 
 from src.utils.conllu import ConlluReader
@@ -31,6 +32,23 @@ def has_mi(sent):
                 return False    
     return True
 
+def fix_mi(lines):
+    for i, line in enumerate(lines):
+        if line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) < 10:
+            continue
+        if "Multext=" not in parts[9]:
+            continue
+        tag = parts[9].split("Multext=", 1)[1]
+        tag = tag.strip()
+        if not tag:
+            continue
+        parts[9] = f"Multext={tag}"
+        lines[i] = "\t".join(parts)
+    return lines
+
 
 def main(argv):
     parser = argparse.ArgumentParser(
@@ -49,6 +67,7 @@ def main(argv):
             if not has_alpha(sent):
                 logging.info(f"drop: {sent.sentence()}")
                 continue
+            sent.lines = fix_mi(sent.lines)
             if not has_mi(sent):
                 logging.info(f"drop: {sent.sentence()}")
                 continue    
