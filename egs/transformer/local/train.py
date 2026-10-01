@@ -350,7 +350,6 @@ def main(argv):
         output_dir=os.path.join(args.out, "checkpoints"),
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
-        per_device_eval_batch_size=args.batch_size,
         eval_accumulation_steps=4,
         per_device_eval_batch_size=4,
         gradient_accumulation_steps=args.grad_accum_steps,
