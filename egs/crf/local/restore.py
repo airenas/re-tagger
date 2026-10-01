@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+from tqdm import tqdm
+
 from src.utils.compare import drop_non_important
 from src.utils.logger import logger
 from src.utils.punct import is_punctuation
@@ -66,9 +68,16 @@ def main(argv):
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
+    tags = {}
     with open(args.tags, 'r') as f:
-        tags = {it[0]: {mi.split(":")[0]: int(mi.split(":")[1]) for mi in it[1].strip().split(" ")} for it in
-                [w.strip().split("\t") for w in f]}
+        for w in tqdm(f):
+            w = w.strip()
+            it = w.split("\t")
+            try:
+                tags[it[0]] = {mi.split(":")[0]: int(mi.split(":")[1]) for mi in it[1].strip().split(" ")}
+            except BaseException as ex:
+                logger.error(f"for '{w}', ({it}). {ex}")
+                raise ex
     logger.info("File lemmas: {}".format(args.lemmas))
     logger.info("File pred  : {}".format(args.pred))
     wc, rc, mpc, nopc, multi_wc = 0, 0, 0, 0, 0

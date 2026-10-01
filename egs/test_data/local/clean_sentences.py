@@ -25,6 +25,10 @@ def has_mi(sent):
                 return False
             if tag[0] == "V" and len(tag) < 14:
                 return False
+            if "=" in tag: # smth wrong
+                return False
+            if ":" in tag: # smth wrong
+                return False    
     return True
 
 

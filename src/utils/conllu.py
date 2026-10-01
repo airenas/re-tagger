@@ -1,12 +1,11 @@
 import logging
-import sys
 
 
 def extract_tag(l):
     v = l.partition("Multext=")
     if v[1]:
-        return v[2]
-    return v[0]
+        return v[2].strip()
+    return v[0].strip()
 
 
 class Connlu:
