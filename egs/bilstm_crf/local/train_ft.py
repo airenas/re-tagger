@@ -1,11 +1,13 @@
 import argparse
 import csv
+import shutil
 import sys
+from pathlib import Path
 
 import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from tensorflow.python.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.python.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from tensorflow_addons.text import CRFModelWrapper
 
 from egs.bilstm_crf.local.format_data import format_data, prepare_fasttext_matrix_emb_layer, \
@@ -62,14 +64,17 @@ def main(argv):
 
     input = tf.keras.layers.Input(shape=(None, e_dim,))
     output = input
+    # output = tf.keras.layers.Bidirectional(
+    #     tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0))(output)
+    # output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0)(output)
     output = tf.keras.layers.Bidirectional(
-        tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0))(output)
-    output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, recurrent_dropout=0)(output)
+        tf.keras.layers.LSTM(units=hidden, return_sequences=True, dropout=0.2, recurrent_dropout=0))(output)
+    output = tf.keras.layers.LSTM(units=hidden, return_sequences=True, dropout=0.2, recurrent_dropout=0)(output)
     # output = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(hidden, activation="tanh"))(output)
     m1 = tf.keras.Model(input, output)
     m1.summary()
     model = CRFModelWrapper(m1, num_tags)
-    model.compile(optimizer=tf.keras.optimizers.Adam())
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
 
     lookup_layer = tf.keras.layers.StringLookup(vocabulary=words, num_oov_indices=0)
     t_lookup_layer = tf.keras.layers.StringLookup(vocabulary=tags, num_oov_indices=0)
@@ -88,14 +93,38 @@ def main(argv):
     train_ds = map_and_batch(make_train_dataset(data_train), dataset_preprocess, batch_size)
     val_ds = map_and_batch(make_train_dataset(data_val), dataset_preprocess, batch_size)
 
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss',
+                                  factor=0.5, 
+                                  patience=3, 
+                                  min_lr=1e-5, 
+                                  verbose=1)
+
     checkpoint = ModelCheckpoint(filepath=args.out + "-val",  # "ep-{epoch:02d}",
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
                                  mode='min')
-    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
 
-    model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, callbacks=[checkpoint, es])
+    epoch_checkpoint = ModelCheckpoint(filepath=args.out + "-epoch-{epoch:02d}",
+                                        verbose=1,
+                                        save_best_only=False)
+
+    keep = 7
+    class KeepRecentCheckpoints(tf.keras.callbacks.Callback):
+        def on_epoch_end(self, epoch, logs=None):
+            checkpoints = sorted(Path(args.out).parent.glob(Path(args.out).name + "-epoch-*"))
+            for old_checkpoint in checkpoints[:-(keep - 1)]:
+                logger.info('Deleting old checkpoint: {}'.format(old_checkpoint))
+                if old_checkpoint.is_dir():
+                    shutil.rmtree(old_checkpoint)
+                else:
+                    old_checkpoint.unlink()
+
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=keep)
+
+    model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, 
+              callbacks=[checkpoint, epoch_checkpoint, KeepRecentCheckpoints(), reduce_lr, es])
+    # model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, callbacks=[checkpoint, es])
     model.summary(150)
     logger.info('Saving tf model ...')
     tf.keras.models.save_model(model, args.out)
