@@ -109,18 +109,18 @@ def main(argv):
                                         verbose=1,
                                         save_best_only=False)
 
-    keep = 7
+    keep = 8
     class KeepRecentCheckpoints(tf.keras.callbacks.Callback):
         def on_epoch_end(self, epoch, logs=None):
             checkpoints = sorted(Path(args.out).parent.glob(Path(args.out).name + "-epoch-*"))
-            for old_checkpoint in checkpoints[:-(keep - 1)]:
+            for old_checkpoint in checkpoints[:-keep]:
                 logger.info('Deleting old checkpoint: {}'.format(old_checkpoint))
                 if old_checkpoint.is_dir():
                     shutil.rmtree(old_checkpoint)
                 else:
                     old_checkpoint.unlink()
 
-    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=keep)
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=keep-1)
 
     model.fit(train_ds, validation_data=val_ds, epochs=50, verbose=1, 
               callbacks=[checkpoint, epoch_checkpoint, KeepRecentCheckpoints(), reduce_lr, es])
