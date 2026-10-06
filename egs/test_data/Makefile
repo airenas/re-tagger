@@ -21,11 +21,17 @@ ${out_dir}/extracted/.done: $(data_dir)/${zip} | ${out_dir}/extracted
 	unzip $(data_dir)/${zip} -d ${out_dir}/extracted
 	touch $@
 ${out_dir}/extracted/.v0.done: $(data_dir)/${zip_v0} | ${out_dir}/extracted_v0
+ifneq ($(strip $(zip_v0)),)
 	unzip $(data_dir)/${zip_v0} -d ${out_dir}/extracted_v0
-	touch $@
+endif
+	touch $@	
 ############################################
 ${out_dir}/all_v0_1.txt: ${out_dir}/extracted/.v0.done
+ifneq ($(strip $(zip_v0)),)
 	pv ${out_dir}/extracted_v0/$(zip_v0_dir)/*.conllu > $@
+else
+	touch $@
+endif
 ${out_dir}/all_v1_1.txt: ${out_dir}/extracted/.done
 	pv ${out_dir}/extracted/$(zip_dir)/*.conllu > $@
 ${out_dir}/all_1.txt: ${out_dir}/all_v0_1.txt ${out_dir}/all_v1_1.txt
