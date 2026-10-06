@@ -19,7 +19,10 @@ def drop_non_important(w, m):
     if m[0] == "M" and m[1] in "c":
         m[3] = "-"
     if m[0] in "XY":
-        m[1] = "-"
+        if len(m) == 1:
+            m.append("-")
+        else:
+            m[1] = "-"
     if m[0] in "OIQSRAVC":
         m[1] = "g"
     return "".join(m)

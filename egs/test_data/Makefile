@@ -14,20 +14,38 @@ install/req:
 	# conda create --name pos python=3.11
 	pip install -r ../../requirements.txt
 ############################################
-${out_dir}/extracted: 
-	mkdir -p $@
-${out_dir}: 
+${out_dir}/extracted ${out_dir}/extracted_v0 ${out_dir}: 
 	mkdir -p $@	
 ############################################
 ${out_dir}/extracted/.done: $(data_dir)/${zip} | ${out_dir}/extracted
 	unzip $(data_dir)/${zip} -d ${out_dir}/extracted
 	touch $@
-${out_dir}/all_1.txt: ${out_dir}/extracted/.done
+${out_dir}/extracted/.v0.done: $(data_dir)/${zip_v0} | ${out_dir}/extracted_v0
+ifneq ($(strip $(zip_v0)),)
+	unzip $(data_dir)/${zip_v0} -d ${out_dir}/extracted_v0
+endif
+	touch $@	
+############################################
+${out_dir}/all_v0_1.txt: ${out_dir}/extracted/.v0.done
+ifneq ($(strip $(zip_v0)),)
+	pv ${out_dir}/extracted_v0/$(zip_v0_dir)/*.conllu > $@
+else
+	touch $@
+endif
+${out_dir}/all_v1_1.txt: ${out_dir}/extracted/.done
 	pv ${out_dir}/extracted/$(zip_dir)/*.conllu > $@
-${out_dir}/all.txt: ${out_dir}/all_1.txt
+${out_dir}/all_1.txt: ${out_dir}/all_v0_1.txt ${out_dir}/all_v1_1.txt
+	cat ${out_dir}/all_v0_1.txt ${out_dir}/all_v1_1.txt > $@_
+	mv $@_ $@
+${out_dir}/all_2.txt: ${out_dir}/all_1.txt
+	$(python_cmd) local/clean_sentences.py --input $^ --output $@_
+	mv $@_ $@
+############################################
+${out_dir}/all.txt: ${out_dir}/all_2.txt
 	cat $^ | sed 's/ _/\t_/g' | \
 		sed 's/Sing\t_\tMultext/Sing\t_\t_\t_\tMultext/g' > $@_
 	mv $@_ $@	
+
 ${out_dir}/test_dad.txt: ${data_dir}/ma_testai.csv | ${out_dir}/extracted
 	python local/csv_to_sentences.py --input $^ > $@_
 	mv $@_ $@

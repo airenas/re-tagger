@@ -25,11 +25,11 @@ def fix_dash_in_word(l):
     tags = l.split("\t")
     if len(tags) < 2:
         return l
-    w = tags[1]
-    if len(w) > 3 and "-" in w and is_number_with_dash(w):
-        tags[1] = replace_number_with_dash(w)
-        # logger.info("{} - {}".format(w, tags[1]))
-        return "\t".join(tags)
+    # w = tags[1]
+    # if len(w) > 3 and "-" in w and is_number_with_dash(w):
+    #     tags[1] = replace_number_with_dash(w)
+    #     # logger.info("{} - {}".format(w, tags[1]))
+    #     return "\t".join(tags)
     return l
 
 

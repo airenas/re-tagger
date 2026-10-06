@@ -1,11 +1,11 @@
-import sys
+import logging
 
 
 def extract_tag(l):
     v = l.partition("Multext=")
     if v[1]:
-        return v[2]
-    return v[0]
+        return v[2].strip()
+    return v[0].strip()
 
 
 class Connlu:
@@ -56,7 +56,7 @@ class ConlluReader:
 
     def __enter__(self):
         self.fd = open(self.path, 'r')
-        print("Opened %s" % self.path, file=sys.stderr)
+        logging.info("Opened %s" % self.path)
         return self
 
     def __exit__(self, type, value, traceback):
