@@ -98,7 +98,7 @@ show/err/test/ext: ${out_dir}/test_final_calc_ext.txt
 export/onnx: ${out_dir}/model.onnx
 ${out_dir}/model.onnx:
 	$(python_cmd) local/export_onnx.py --model ${model} --out $@ \
-		--version "$(model_version)" \
+		--version "$(version)" \
 		--description "$(model_description)"
 
 ############################################
