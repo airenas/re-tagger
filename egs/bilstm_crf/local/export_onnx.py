@@ -14,6 +14,8 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--model", nargs='?', required=True, help="Input model")
     parser.add_argument("--out", nargs='?', required=True, help="Output onnx file")
+    parser.add_argument("--version", help="Model version to store in ONNX metadata")
+    parser.add_argument("--description", help="Model description to store in ONNX metadata")
     args = parser.parse_args(args=argv)
 
     logger.info("Starting")
@@ -24,6 +26,14 @@ def main(argv):
 
     logger.info("converting")
     onnx_model, _ = tf2onnx.convert.from_keras(model, opset=18)
+    if args.version:
+        version_metadata = onnx_model.metadata_props.add()
+        version_metadata.key = "version"
+        version_metadata.value = args.version
+    if args.description:
+        description_metadata = onnx_model.metadata_props.add()
+        description_metadata.key = "description"
+        description_metadata.value = args.description
     logger.info(f"saving {args.out}")
     onnx.save(onnx_model, args.out)
 

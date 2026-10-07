@@ -8,6 +8,7 @@ out_dir?=data
 model?=${out_dir}/models/morph/1
 out_model?=tm-0.1
 out_model_path?=${out_dir}/$(out_model)
+model_description?=ML model v$(version). Build date: $(shell date '+%Y-%m-%d %H:%M:%S'). Embeddings: $(ft_model_name). Trained on: $(trained_on).
 python_dir=${CURDIR}/../../src/utils
 nn_params?=--use_ends
 use_ft?=1
@@ -96,7 +97,9 @@ show/err/test/ext: ${out_dir}/test_final_calc_ext.txt
 ############################################
 export/onnx: ${out_dir}/model.onnx
 ${out_dir}/model.onnx:
-	$(python_cmd) local/export_onnx.py --model ${model} --out $@
+	$(python_cmd) local/export_onnx.py --model ${model} --out $@ \
+		--version "$(model_version)" \
+		--description "$(model_description)"
 
 ############################################
 pack: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/$(ft_model_name) ${out_model_path}/tags_freq \
@@ -128,6 +131,7 @@ build/data/docker/push:
 info:
 	@echo pack data = ${out_dir}/
 	@echo version 	= ${version}
+	@echo model_description = ${model_description}
 .PHONY: info
 ############################################
 build: test/train test/test
