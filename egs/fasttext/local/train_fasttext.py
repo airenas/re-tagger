@@ -1,4 +1,5 @@
 import argparse
+import signal
 
 import fasttext
 
@@ -19,6 +20,9 @@ def main():
     parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--threads", type=int, default=12, help="Training threads")
     args = parser.parse_args()
+
+    # fastText training blocks in native code, so Python's default Ctrl+C handler never runs
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     model = fasttext.train_unsupervised(
         input=args.input,

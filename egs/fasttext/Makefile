@@ -49,10 +49,13 @@ s3_cmd?=mcli cp --recursive
 $(work_dir)/.dwn: | $(work_dir) $(sentences_dir)
 	$(s3_cmd) $(corpus_bucket) $(sentences_dir)/
 	touch $@
-$(work_dir)/data/lt.sentences.txt: $(work_dir)/.dwn | $(work_dir)/data
+$(work_dir)/data/sentences.txt: $(work_dir)/.dwn | $(work_dir)/data
 	$(python_cmd) ./local/to_sentences_from_parquet.py --input $(sentences_dir) --output $@_ --limit $(limit)
 	mv $@_ $@
-$(work_dir)/data/$(name).$(dim).bin: $(work_dir)/data/lt.sentences.txt
+$(work_dir)/data/sentences.clean.txt: $(work_dir)/data/sentences.txt
+	$(python_cmd) ./local/clean.py --input $^ --output $@_
+	mv $@_ $@    
+$(work_dir)/data/$(name).$(dim).bin: $(work_dir)/data/sentences.clean.txt
 	$(python_cmd) ./local/train_fasttext.py --input $< --output $@ --dim $(dim) \
         --window $(window) --min-count $(min_count) --minn $(minn) --maxn $(maxn) \
         --bucket $(bucket) --neg $(neg) --lr $(lr) --sampling $(sampling) \
