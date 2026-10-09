@@ -22,6 +22,8 @@ threads?=12
 ###################################################################
 info:
 	@echo "work_dir: $(work_dir)"
+	@echo "sentences_dir: $(sentences_dir)"
+	@echo "corpus_dir: $(corpus_dir)"
 	@echo "corpus_bucket: $(corpus_bucket)"
 	@echo "words limit: $(limit)"
 	@echo "train window: $(window)"
@@ -34,11 +36,11 @@ info:
 	@echo "dim: $(dim)"
 .PHONY: info
 ###################################################################
-build: $(work_dir)/data/$(name).$(dim).fifu
+build: $(work_dir)/$(name).$(dim).fifu
 .PHONY: build
 ##################################################################
 ###################################################################
-$(work_dir) $(work_dir)/corpus/sentences $(work_dir)/data:
+$(work_dir) $(sentences_dir) $(corpus_dir):
 	mkdir -p $@
 
 ###################################################################
@@ -46,52 +48,60 @@ $(work_dir) $(work_dir)/corpus/sentences $(work_dir)/data:
 s3_cmd?=mcli cp --recursive
 # s3_cmd?=rc cp --recursive --retry-attempts 3
 ###################################################################
-$(work_dir)/.dwn: | $(work_dir) $(sentences_dir)
-	$(s3_cmd) $(corpus_bucket) $(sentences_dir)/
+$(corpus_dir)/.dwn: | $(corpus_dir) 
+	$(s3_cmd) $(corpus_bucket) $(corpus_dir)/
 	touch $@
-$(work_dir)/data/sentences.txt: $(work_dir)/.dwn | $(work_dir)/data
-	$(python_cmd) ./local/to_sentences_from_parquet.py --input $(sentences_dir) --output $@_ --limit $(limit)
+$(sentences_dir)/sentences.txt: $(corpus_dir)/.dwn | $(sentences_dir)
+	$(python_cmd) ./local/to_sentences_from_parquet.py --input $(corpus_dir) --output $@_ --limit $(limit)
 	mv $@_ $@
-$(work_dir)/data/sentences.clean.txt: $(work_dir)/data/sentences.txt
+$(sentences_dir)/sentences.clean.txt: $(sentences_dir)/sentences.txt
 	$(python_cmd) ./local/clean.py --input $^ --output $@_
 	mv $@_ $@    
-$(work_dir)/data/$(name).$(dim).bin: $(work_dir)/data/sentences.clean.txt
+$(work_dir)/$(name).$(dim).bin: $(sentences_dir)/sentences.clean.txt | $(work_dir)
 	$(python_cmd) ./local/train_fasttext.py --input $< --output $@ --dim $(dim) \
         --window $(window) --min-count $(min_count) --minn $(minn) --maxn $(maxn) \
         --bucket $(bucket) --neg $(neg) --lr $(lr) --sampling $(sampling) \
         --epochs $(epochs) --threads $(threads)
 ###################################################################
-train: $(work_dir)/data/$(name).$(dim).bin
+train: $(work_dir)/$(name).$(dim).bin
 .PHONY: train
 ##################################################################
 install/finalfusion:
 	cargo install finalfusion-utils --features openblas --locked
 ###################################################################
-$(work_dir)/data/%.fifu: $(work_dir)/data/%.bin 
+$(work_dir)/%.fifu: $(work_dir)/%.bin 
 	finalfusion convert -f fasttext $^ $@_
 	mv $@_ $@
-$(work_dir)/data/%.q.fifu: $(work_dir)/data/%.fifu
+$(work_dir)/%.q.fifu: $(work_dir)/%.fifu
 	finalfusion quantize -f finalfusion -a 1 -q opq -b 8 $^ $@_
 	mv $@_ $@
-quantize: $(work_dir)/data/$(name).$(dim).q.fifu
+quantize: $(work_dir)/$(name).$(dim).q.fifu
 .PHONY: quantize
 ###################################################################
-test/similarity: $(work_dir)/data/$(name).$(dim).fifu
+test/similarity: $(work_dir)/$(name).$(dim).fifu
 	@echo "Testing similarity - enter word"
 	finalfusion similar -k 10 $<
 .PHONY: test/similarity
 ###################################################################
-test/oov: $(work_dir)/data/$(name).$(dim).fifu
+test/oov: $(work_dir)/$(name).$(dim).fifu
 	@echo "Testing OOV - enter word"
 	$(python_cmd) ./local/fifu.py --input $<
 .PHONY: test/oov
 ###################################################################
 clean:
+	@echo -n "Are you sure to delete $(work_dir)? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)
 .PHONY: clean
 ###################################################################
-clean/data:
-	rm -rf $(work_dir)/data
-.PHONY: clean/data
+.PHONY: clean/sentences
+clean/sentences:
+	@echo -n "Are you sure to delete $(sentences_dir)? [y/N] " && read ans && [ $${ans:-N} = y ]
+	rm -rf $(sentences_dir)
+.PHONY: clean/sentences
+###################################################################
+clean/corpus:
+	@echo -n "Are you sure to delete $(corpus_dir)? [y/N] " && read ans && [ $${ans:-N} = y ]
+	rm -rf $(corpus_dir)
+.PHONY: clean/corpus
 ###################################################################
 .EXPORT_ALL_VARIABLES:
