@@ -82,6 +82,16 @@ calc/test: ${out_dir}/test_pred_restore.txt ${out_dir}/test_final_calc.txt
 show/err/test: ${out_dir}/test_final_calc.txt
 	cat $^ | grep "<--diff-->" | cut -f2,3 | sort | uniq -c | sort -k1 -nr
 ############################################
+show/err/test/main ${out_dir}/test_final_calc_imp.txt: ${out_dir}/test_plain.txt ${out_dir}/test_pred_restore.txt
+	$(python_cmd) $(python_dir)/compare_main.py --f1 ${out_dir}/test_plain.txt --f2 ${out_dir}/test_pred_restore.txt > ${out_dir}/test_final_calc_imp.txt
+.PHONY: show/err/test/main
+show/err/test/imp: ${out_dir}/test_final_calc_imp.txt
+	cat $^ | grep "<--diff-->" | grep IMP | cut -f2,3 | sort | uniq -c | sort -k1 -nr
+.PHONY: show/err/test/imp
+show/err/test/not-imp: ${out_dir}/test_final_calc_imp.txt
+	cat $^ | grep "<--diff-->" | grep -v IMP | cut -f2,3 | sort | uniq -c | sort -k1 -nr
+.PHONY: show/err/test/not-imp
+############################################
 ${out_dir}/test_pred_ext.txt: ${out_dir}/test_f.txt
 	$(python_cmd) ../test_data/local/bilstm_run.py --input $^ > $@_
 	mv $@_ $@
