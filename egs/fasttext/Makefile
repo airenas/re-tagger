@@ -81,6 +81,11 @@ test/similarity: $(work_dir)/data/$(name).$(dim).fifu
 	finalfusion similar -k 10 $<
 .PHONY: test/similarity
 ###################################################################
+test/oov: $(work_dir)/data/$(name).$(dim).fifu
+	@echo "Testing OOV - enter word"
+	$(python_cmd) ./local/fifu.py --input $<
+.PHONY: test/oov
+###################################################################
 clean:
 	rm -rf $(work_dir)
 .PHONY: clean

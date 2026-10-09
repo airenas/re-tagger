@@ -46,6 +46,13 @@ def replace_url_email(word):
 
 
 MAX_PUNCT_RUN = 3
+MAX_WORD_LEN = 30
+MIN_ALNUM_RATIO = 2/3
+# letter next to a digit, e.g. abc123 or 12abc
+MIXED_LETTER_DIGIT_RE = re.compile(r"[^\W\d_]\d|\d[^\W\d_]")
+# punctuation between letters, e.g. pvz.lt, t.y; hyphens and dashes are allowed
+INNER_PUNCT_RE = re.compile(r"[^\W\d_][^\w\s\-‐‑‒–—―−]+[^\W\d_]")
+REPEAT_LETTER_RE = re.compile(r"([^\W\d_])\1{3,}", re.IGNORECASE)
 
 
 def has_punct_run(line):
@@ -61,6 +68,14 @@ def has_punct_run(line):
     return False
 
 
+def alnum_ratio(line):
+    """Share of letters and digits among non-space characters."""
+    chars = [c for c in line if not c.isspace()]
+    if not chars:
+        return 0.0
+    return sum(1 for c in chars if c.isalnum()) / len(chars)
+
+
 def skip(line):
     """Skip the line if it has no letters (only punctuation, digits, spaces),
     has a long run of punctuation, or contains a letter that is not Lithuanian.
@@ -71,7 +86,28 @@ def skip(line):
         return True    
     if has_punct_run(line):
         return True
+    if alnum_ratio(line) < MIN_ALNUM_RATIO:
+        return True
+    if MIXED_LETTER_DIGIT_RE.search(line) or INNER_PUNCT_RE.search(line):
+        return True
+    if "|" in line:
+        return True
+    if REPEAT_LETTER_RE.search(line):
+        return True
+    if any(len(w) > MAX_WORD_LEN for w in line.split()):
+        return True
     return any(c.isalpha() and c.lower() not in LT_LETTERS for c in line)
+
+
+KEEP_PUNCT = frozenset("-,.!?+*/")
+DASHES = str.maketrans({c: "-" for c in "‐‑‒–—―−"})
+
+
+def replace_punct(line):
+    """Replace punctuation not in KEEP_PUNCT with a space and collapse spaces."""
+    line = line.translate(DASHES)
+    line = "".join(" " if unicodedata.category(c).startswith("P") and c not in KEEP_PUNCT else c for c in line)
+    return " ".join(line.split())
 
 
 def clean_text(line):
@@ -88,7 +124,7 @@ def clean_text(line):
     line = unicodedata.normalize("NFKC", line)
     if skip(line):
         return line, False
-    return line, True
+    return replace_punct(line), True
 
 
 def main():
