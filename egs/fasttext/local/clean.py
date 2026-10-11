@@ -130,7 +130,12 @@ def clean_text(line):
     res = []
     for word in words:
         w = word.split("(=", 1)
-        res.append(replace_url_email(w[0]))
+        p = ""
+        if len(w) == 2:
+            wp = w[1].split(")", 1)  # remove morf info
+            if len(wp) == 2:
+                p = wp[1]
+        res.append(replace_url_email(w[0] + p))
 
     line = " ".join(res)
     # Normalize punctuation

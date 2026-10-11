@@ -112,6 +112,11 @@ class TestCleanText:
         assert ok
         assert res == "Jis labai geras - taip."
 
+    def test_strips_morphology_punct(self):
+        res, ok = clean_text("Jis(=Įv), labai(=Prv).-")
+        assert ok
+        assert res == "Jis, labai.-"
+
     def test_replaces_url_and_email(self):
         res, ok = clean_text("Rašykite jonas@delfi.lt arba https://www.delfi.lt/a ačiū")
         assert ok
