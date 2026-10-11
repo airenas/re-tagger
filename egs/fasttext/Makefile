@@ -3,7 +3,7 @@ cfg?=Makefile.options
 -include $(cfg)
 ###################################################################
 log?=INFO
-python_cmd=PYTHONPATH=./../../../ LOGLEVEL=$(log) python3
+python_cmd=PYTHONPATH=./../../ LOGLEVEL=$(log) python3
 
 limit?=10000000000
 sentences_dir?=$(work_dir)/corpus/sentences
