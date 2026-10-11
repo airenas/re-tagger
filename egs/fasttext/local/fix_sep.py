@@ -30,20 +30,46 @@ def one_upper_letter(word):
         return True
     return False
 
+def is_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False    
+
 
 def fix_sep(line):
     """Fix sep - add space before trailing sep"""
     res = []
     for word in line.split():
-        pos = len(word)
-        while (pos - 1) > -1 and word[pos - 1] in KEEP_PUNCT and not one_upper_letter(word[: pos]):
-            pos -= 1
-        if 0 < pos < len(word):
-            res.append(word[:pos])
-            res.append(word[pos:])
+        if word == "-":
+            res.append(word)
             continue
-        res.append(word)
-    return " ".join(res)
+        parts = [word]
+        if "-" in word:
+            if is_float(word.replace(",", ".")):
+                res.append(word)
+                continue
+            by_dash = word.split("-")
+            parts = []
+            for w in by_dash:
+                parts.append(w)
+
+        for i, w in enumerate(parts):
+            if i == len(parts) - 1:
+                pos = len(w)
+                while (pos - 1) > -1 and w[pos - 1] in KEEP_PUNCT and not one_upper_letter(w[: pos]):
+                    pos -= 1
+                if 0 < pos < len(w):
+                    res.append(w[:pos])
+                    res.append(w[pos:])
+                else:
+                    res.append(w)
+            else:
+                res.append(w)
+            if i < len(parts) - 1:
+                res.append("-")
+    return " ".join(res).strip()
 
 
 def main():

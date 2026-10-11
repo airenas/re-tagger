@@ -55,7 +55,7 @@ MIXED_LETTER_DIGIT_RE = re.compile(r"[^\W\d_]\d|\d[^\W\d_]")
 INNER_PUNCT_RE = re.compile(r"[^\W\d_][^\w\s\-‐‑‒–—―−]+[^\W\d_]")
 REPEAT_LETTER_RE = re.compile(r"([^\W\d_])\1{3,}", re.IGNORECASE)
 SHORT_FORMS = {"a.", "m.", "d.", "š.", "proc.", "pvz.", "vnt.", "kt.", "val.", "t.y.", "t.t.", "T.y.", "T.t.", "Pvz.", "Kt.", "lt.",
-               "Lt.", "cnt.", "Cnt.", "kt.", "Kt."}
+               "Lt.", "cnt.", "Cnt.", "kt.", "Kt.", "nr.", "Nr.", "p."}
 
 
 def has_punct_run(line):
@@ -137,7 +137,14 @@ def clean_text(line):
                 p = wp[1]
         res.append(replace_url_email(w[0] + p))
 
-    line = " ".join(res)
+    r2 = []
+    for word in res:
+        if len(word) > 3 and word[0].isupper() and word[1] == "." and word[2].isupper():
+            r2.append(word[0:2])
+            r2.append(word[2:])
+        else:
+            r2.append(word)
+    line = " ".join(r2)
     # Normalize punctuation
     line = unicodedata.normalize("NFKC", line)
     if skip(line):

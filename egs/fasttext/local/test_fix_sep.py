@@ -5,6 +5,8 @@ from egs.fasttext.local.fix_sep import fix_sep, one_upper_letter
 
 @pytest.mark.parametrize("line,exp",
                          [
+                             ("-01,12 aaa", "-01,12 aaa"),
+                             ("- x ,", "- x ,"),
                              ("A. B. G., Ž. I.. 0.", "A. B. G. , Ž. I. . 0 ."),
                              ("a ... b+* =", "a ... b +* ="),
                              ("", ""),
@@ -20,6 +22,12 @@ from egs.fasttext.local.fix_sep import fix_sep, one_upper_letter
                              ("a. ž.", "a. ž ."),
                              ("Pvz. 10 cnt.", "Pvz. 10 cnt."),
                              ("T.y. 10 cnt.", "T.y. 10 cnt."),
+                             ("Nr. nr. aa", "Nr. nr. aa"),
+                             ("A-BC-AA", "A - BC - AA"),
+                             ("A-01-22", "A - 01 - 22"),
+                             ("-01-22", "- 01 - 22"),
+
+                             ("-1e-5 1e-5 3e+3", "-1e-5 1e-5 3e+3"),
 
                          ])
 def test_fix_sep(line, exp):

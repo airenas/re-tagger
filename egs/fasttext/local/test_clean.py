@@ -122,6 +122,11 @@ class TestCleanText:
         assert ok
         assert res == "T.t. yra olia t.y., a"
 
+    def test_fix_name(self):
+        res, ok = clean_text("T.Petraitis yra")
+        assert ok
+        assert res == "T. Petraitis yra"
+
     def test_replaces_url_and_email(self):
         res, ok = clean_text("Rašykite jonas@delfi.lt arba https://www.delfi.lt/a ačiū")
         assert ok
