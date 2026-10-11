@@ -56,8 +56,11 @@ $(sentences_dir)/sentences.txt: $(corpus_dir)/.dwn | $(sentences_dir)
 	mv $@_ $@
 $(sentences_dir)/sentences.clean.txt: $(sentences_dir)/sentences.txt
 	$(python_cmd) ./local/clean.py --input $^ --output $@_
-	mv $@_ $@    
-$(work_dir)/$(name).$(dim).bin: $(sentences_dir)/sentences.clean.txt | $(work_dir)
+	mv $@_ $@
+$(sentences_dir)/sentences.final.txt: $(sentences_dir)/sentences.clean.txt
+	$(python_cmd) ./local/fix_sep.py --input $^ --output $@_
+	mv $@_ $@
+$(work_dir)/$(name).$(dim).bin: $(sentences_dir)/sentences.final.txt | $(work_dir)
 	$(python_cmd) ./local/train_fasttext.py --input $< --output $@ --dim $(dim) \
         --window $(window) --min-count $(min_count) --minn $(minn) --maxn $(maxn) \
         --bucket $(bucket) --neg $(neg) --lr $(lr) --sampling $(sampling) \

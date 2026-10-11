@@ -7,6 +7,7 @@ import unicodedata
 
 from tqdm import tqdm
 
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -47,12 +48,14 @@ def replace_url_email(word):
 
 MAX_PUNCT_RUN = 3
 MAX_WORD_LEN = 30
-MIN_ALNUM_RATIO = 2/3
+MIN_ALNUM_RATIO = 2 / 3
 # letter next to a digit, e.g. abc123 or 12abc
 MIXED_LETTER_DIGIT_RE = re.compile(r"[^\W\d_]\d|\d[^\W\d_]")
 # punctuation between letters, e.g. pvz.lt, t.y; hyphens and dashes are allowed
 INNER_PUNCT_RE = re.compile(r"[^\W\d_][^\w\s\-‐‑‒–—―−]+[^\W\d_]")
 REPEAT_LETTER_RE = re.compile(r"([^\W\d_])\1{3,}", re.IGNORECASE)
+SHORT_FORMS = {"m.", "d.", "proc.", "pvz.", "vnt.", "kt.", "val.", "t.y.", "t.t.", "T.y.", "T.t.", "Pvz.", "Kt.", "lt.",
+               "Lt.", "cnt.", "Cnt.", "k.t.", "K.t."}
 
 
 def has_punct_run(line):
@@ -76,6 +79,17 @@ def alnum_ratio(line):
     return sum(1 for c in chars if c.isalnum()) / len(chars)
 
 
+def strip_short_forms(line):
+    """Remove the dots of allowed short forms (t.y. -> ty) so they count as plain words."""
+    return " ".join(w.replace(".", "") if w.rstrip(",;:!?") in SHORT_FORMS else w for w in line.split())
+
+
+def has_inner_punct(line):
+    """True if a word has punctuation between letters, ignoring allowed short forms (t.y., pvz., ...)."""
+    rest = " ".join(w for w in line.split() if w.rstrip(",;:!?") not in SHORT_FORMS)
+    return INNER_PUNCT_RE.search(rest) is not None
+
+
 def skip(line):
     """Skip the line if it has no letters (only punctuation, digits, spaces),
     has a long run of punctuation, or contains a letter that is not Lithuanian.
@@ -83,12 +97,12 @@ def skip(line):
     if not any(c.isalpha() for c in line):
         return True
     if sum(1 for c in line if c.isalpha()) < 3:
-        return True    
+        return True
     if has_punct_run(line):
         return True
-    if alnum_ratio(line) < MIN_ALNUM_RATIO:
+    if alnum_ratio(strip_short_forms(line)) < MIN_ALNUM_RATIO:
         return True
-    if MIXED_LETTER_DIGIT_RE.search(line) or INNER_PUNCT_RE.search(line):
+    if MIXED_LETTER_DIGIT_RE.search(line) or has_inner_punct(line):
         return True
     if "|" in line:
         return True
@@ -101,7 +115,6 @@ def skip(line):
 
 KEEP_PUNCT = frozenset("-,.!?+*/")
 DASHES = str.maketrans({c: "-" for c in "‐‑‒–—―−"})
-
 
 def replace_punct(line):
     """Replace punctuation not in KEEP_PUNCT with a space and collapse spaces."""
@@ -140,7 +153,7 @@ def main():
                 line = line.rstrip("\n")
                 read += 1
                 cleaned, ok = clean_text(line)
-                if not ok or len(cleaned) < 2: # skip too short sentences, perhaps bad splitting into sentences
+                if not ok or len(cleaned) < 2:  # skip too short sentences, perhaps bad splitting into sentences
                     skipped += 1
                     continue
                 wrote += 1
