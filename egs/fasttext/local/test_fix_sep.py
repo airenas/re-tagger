@@ -17,7 +17,7 @@ from egs.fasttext.local.fix_sep import fix_sep, one_upper_letter
                              ("- x ,", "- x ,"),
                              ("word,word", "word,word"),
                              ("0.12, a, b.", "0.12 , a , b ."),
-                             ("a. ž.", "a . ž ."),
+                             ("a. ž.", "a. ž ."),
                              ("Pvz. 10 cnt.", "Pvz. 10 cnt."),
                              ("T.y. 10 cnt.", "T.y. 10 cnt."),
 
@@ -36,7 +36,7 @@ def test_fix_sep(line, exp):
                              ("A.B.", False),
                              ("A.B", False),
                              ("A", False),
-                             ("a.", False),
+                             ("a.", True),
                              ("a.b.", False),
                              ("m.", True),
                              ("d.", True),

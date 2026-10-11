@@ -93,8 +93,8 @@ def test_replace_punct(line, exp):
                              ("pvz.lt yra", True),
                              ("t.y. taip", False),
                              ("T.y. taip", False),
-                             ("K.t. taip", False),
-                             ("t.t., k.t.,", False),
+                             ("K.t. taip", True),
+                             ("t.t., kt.,", False),
                              ("Labas.Kitas", True),
                              ("kažkas-nors yra", False),
                              ("10-ųjų metų", False),
@@ -116,6 +116,11 @@ class TestCleanText:
         res, ok = clean_text("Jis(=Įv), labai(=Prv).-")
         assert ok
         assert res == "Jis, labai.-"
+
+    def test_fix_tt(self):
+        res, ok = clean_text("T. t. yra olia t. y., a")
+        assert ok
+        assert res == "T.t. yra olia t.y., a"
 
     def test_replaces_url_and_email(self):
         res, ok = clean_text("Rašykite jonas@delfi.lt arba https://www.delfi.lt/a ačiū")

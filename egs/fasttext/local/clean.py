@@ -54,8 +54,8 @@ MIXED_LETTER_DIGIT_RE = re.compile(r"[^\W\d_]\d|\d[^\W\d_]")
 # punctuation between letters, e.g. pvz.lt, t.y; hyphens and dashes are allowed
 INNER_PUNCT_RE = re.compile(r"[^\W\d_][^\w\s\-‐‑‒–—―−]+[^\W\d_]")
 REPEAT_LETTER_RE = re.compile(r"([^\W\d_])\1{3,}", re.IGNORECASE)
-SHORT_FORMS = {"m.", "d.", "proc.", "pvz.", "vnt.", "kt.", "val.", "t.y.", "t.t.", "T.y.", "T.t.", "Pvz.", "Kt.", "lt.",
-               "Lt.", "cnt.", "Cnt.", "k.t.", "K.t."}
+SHORT_FORMS = {"a.", "m.", "d.", "š.", "proc.", "pvz.", "vnt.", "kt.", "val.", "t.y.", "t.t.", "T.y.", "T.t.", "Pvz.", "Kt.", "lt.",
+               "Lt.", "cnt.", "Cnt.", "kt.", "Kt."}
 
 
 def has_punct_run(line):
@@ -142,7 +142,9 @@ def clean_text(line):
     line = unicodedata.normalize("NFKC", line)
     if skip(line):
         return line, False
-    return replace_punct(line), True
+    res = replace_punct(line)    
+    res = res.replace("t. y.", "t.y.").replace("T. y.", "T.y.").replace("t. t.", "t.t.").replace("T. t.", "T.t.")
+    return res, True
 
 
 def main():
