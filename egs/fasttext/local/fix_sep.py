@@ -39,6 +39,7 @@ def is_float(s):
         return False    
 
 _split = re.compile(r'([:/])')
+_split_dot = re.compile(r'([.])')
 
 def fix_sep(line):
     """Fix sep - add space before trailing sep"""
@@ -76,7 +77,22 @@ def fix_sep(line):
         parts = _split.split(w)
         for p in parts:
             r2.append(p)
-    return " ".join(r2).strip()
+    r3 = []
+    for w in r2:
+        if "." in w and w != ".":
+            if is_float(w):
+                r3.append(w)
+                continue
+            if one_upper_letter(w):
+                r3.append(w)
+                continue
+            parts = _split_dot.split(w)
+            for p in parts:
+                r3.append(p)
+        else:
+            r3.append(w)
+    r4 = " ".join(r3).strip()
+    return " ".join(r4.split()) # remove double spaces
 
 
 def main():
