@@ -113,7 +113,7 @@ def skip(line):
     return any(c.isalpha() and c.lower() not in LT_LETTERS for c in line)
 
 
-KEEP_PUNCT = frozenset("-,.!?+*/")
+KEEP_PUNCT = frozenset("-,.!?+*/:;")
 DASHES = str.maketrans({c: "-" for c in "‐‑‒–—―−"})
 
 def replace_punct(line):

@@ -61,7 +61,7 @@ def test_skip_alnum_boundary(line, exp):
 @pytest.mark.parametrize("line,exp",
                          [
                              ("Jis (labai) „puikus“ – taip; <url>, ok: 3+4*5/2 -x!?",
-                              "Jis labai puikus - taip <url>, ok 3+4*5/2 -x!?"),
+                              "Jis labai puikus - taip; <url>, ok: 3+4*5/2 -x!?"),
                              ("a – b — c 3−2", "a - b - c 3-2"),
                              ("a   b\t(c)", "a b c"),
                              ("a|b=c", "a|b=c"),

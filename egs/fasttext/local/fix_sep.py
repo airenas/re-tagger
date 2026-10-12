@@ -2,6 +2,7 @@
 import argparse
 import logging
 import os
+import re
 
 from tqdm import tqdm
 
@@ -37,6 +38,7 @@ def is_float(s):
     except ValueError:
         return False    
 
+_split = re.compile(r'([:/])')
 
 def fix_sep(line):
     """Fix sep - add space before trailing sep"""
@@ -69,7 +71,12 @@ def fix_sep(line):
                 res.append(w)
             if i < len(parts) - 1:
                 res.append("-")
-    return " ".join(res).strip()
+    r2 = []
+    for w in res:
+        parts = _split.split(w)
+        for p in parts:
+            r2.append(p)
+    return " ".join(r2).strip()
 
 
 def main():
