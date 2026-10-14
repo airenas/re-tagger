@@ -119,10 +119,21 @@ ${out_model_path}/tags_freq: ${out_dir}/full_tags.txt | ${out_model_path}
 	cp $^ $@
 ${out_model_path}/clitics: ${out_dir}/clitics_lemma.txt | ${out_model_path}
 	cp $^ $@		
-${out_model_path}/$(ft_model_name): ${ft_model} | ${out_model_path}
+${out_model_path}/embeddings.fifu: ${ft_model} | ${out_model_path}
 	cp $^ $@
-${out_dir}/${out_model}.tar.gz: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/$(ft_model_name) ${out_model_path}/tags_freq \
-	${out_model_path}/clitics 
+${out_model_path}/info.md: | ${out_model_path}
+	echo "# Model Information" > $@
+	echo "## Version: ${version}" >> $@
+	echo "## Model Description: ${model_description}" >> $@
+	echo "## FT Model: ${ft_model}" >> $@
+	echo "## Date: $$(date)" >> $@
+	echo "# Training" >> $@
+	echo "## Data Directory: ${data_dir}" >> $@
+	echo "# Results" >> $@
+	make show/err/test/main >> $@ 2>&1
+	
+${out_dir}/${out_model}.tar.gz: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/embeddings.fifu ${out_model_path}/tags_freq \
+	${out_model_path}/clitics ${out_model_path}/info.md
 	tar -czvf $@_ -C ${out_dir}/ ./${out_model}
 	mv $@_ $@
 pack/gz: ${out_dir}/${out_model}.tar.gz
@@ -138,6 +149,7 @@ info:
 	@echo pack data = ${out_dir}/
 	@echo version 	= ${version}
 	@echo model_description = ${model_description}
+	@echo ft_model = ${ft_model}
 .PHONY: info
 ############################################
 build: test/train test/test
