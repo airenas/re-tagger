@@ -14,13 +14,10 @@ nn_params?=--use_ends
 use_ft?=1
 ft_model?=../../data/delfi_cbow.bin
 cuda=
-ifeq ($(no_cuda),1)
-	cuda=CUDA_VISIBLE_DEVICES=""
-endif
 batch?=16
 hidden?=300
 log?=INFO
-python_cmd=PYTHONPATH=../../ $(cuda) LOG_LEVEL=$(log) python
+python_cmd=PYTHONPATH=../../ LOG_LEVEL=$(log) python
 ############################################
 ${out_dir} ${out_model_path}:
 	mkdir -p $@	
