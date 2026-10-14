@@ -108,8 +108,8 @@ ${out_dir}/model.onnx:
 		--description "$(model_description)"
 
 ############################################
-pack: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/$(ft_model_name) ${out_model_path}/tags_freq \
-	${out_model_path}/clitics 
+pack: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/embeddings.fifu \
+	 ${out_model_path}/tags_freq ${out_model_path}/clitics ${out_model_path}/info.md
 .PHONY: pack	
 ${out_model_path}/model.onnx: ${out_dir}/model.onnx | ${out_model_path}
 	cp $^ $@
@@ -131,8 +131,9 @@ ${out_model_path}/info.md: | ${out_model_path}
 	echo "## Data Directory: ${data_dir}" >> $@
 	echo "# Results" >> $@
 	make show/err/test/main >> $@ 2>&1
-	
-${out_dir}/${out_model}.tar.gz: ${out_model_path}/model.onnx ${out_model_path}/tags ${out_model_path}/embeddings.fifu ${out_model_path}/tags_freq \
+
+${out_dir}/${out_model}.tar.gz: ${out_model_path}/model.onnx ${out_model_path}/tags \
+	${out_model_path}/embeddings.fifu ${out_model_path}/tags_freq \
 	${out_model_path}/clitics ${out_model_path}/info.md
 	tar -czvf $@_ -C ${out_dir}/ ./${out_model}
 	mv $@_ $@
