@@ -3,19 +3,35 @@
 On CONLLU_24_01_30.zip test set
 
 
-| No   | Method                                                                                | Acc          | Err count (on test) | Date        | Test details             |
-|------|---------------------------------------------------------------------------------------|--------------|-----------|-------------|--------------------------|
-| o2   | Oracle                                                                                | `0.99235`    | `338`     |
+| No   | Method                                                                                | Acc          | Err count (on test) | Err count (ignore some non critical tts errors) | Date        | Test details             |
+|------|---------------------------------------------------------------------------------------|--------------|-|----------|-------------|--------------------------|
+| o2   | Oracle                                                                                | `0.99235`    | `338`     | 
 | f2   | Fotonija morph                                                                        | `0.95808`    | `1854`    |
 |      |
 |      | **CRF** *context: 2 words before, 2 after*                                            
 | c2   | Word features                                                                         | `0.97411`    | `1145`    |
 |      | **BiLSTM-CRF**                                                                        | 
-| l2   | embedding pretrained fasttext cbow delfi, 300 hidden neurons                                | `0.97750`    | `995`     |             | data_v5.3                
-| l21  | embedding pretrained fasttext cbow delfi, crf(bilstm(300)), cuddn compatible lstm          | `0.97773`    | `985`     | 2024-11-30  | data_v6, model tm-0.6    |
-| l22  | embedding pretrained fasttext cbow delfi, crf(lstm(300,bilstm(300))), cuddn compatible lstm | `0.97915` | `922`   | 2024-12-02  | data_v72, model tm-0.7   |
-| l23  | embedding pretrained fasttext cbow delfi (normalized), crf(lstm(300,bilstm(300))), cuddn compatible lstm | `0.97940` | `911`   | 2024-12-04 | data_v73, model-vol v73, (finalfusion format) | 
-| l24  | embedding pretrained fasttext cbow cc (normalized), crf(lstm(300,bilstm(300))), cuddn compatible lstm | `0.97734` | `1002`   | 2024-12-04 | data_v74, (finalfusion format) | 
+| l2   | embedding (e0), 300 hidden neurons                                | `0.97750`    | `995`     | |            | data_v5.3                
+| l21  | embedding (e1), crf(bilstm(300)), cuddn compatible lstm          | `0.97773`    | `985`     | | 2024-11-30  | data_v6, model tm-0.6    |
+| l22  | embedding (e0), crf(lstm(300,bilstm(300))), cuddn compatible lstm | `0.97915` | `922`   | | 2024-12-02  | data_v72, model tm-0.7   |
+| l23  | embedding (e1), crf(lstm(300,bilstm(300))), cuddn compatible lstm | `0.97940` | `911`  | | 2024-12-04 | data_v73, model-vol v73, (finalfusion format) | 
+| l24  | embedding (e1), crf(lstm(300,bilstm(300))), cuddn compatible lstm | `0.97734` | `1002`  | | 2024-12-04 | data_v74 | 
+| [l080](#l080) | embedding (e1), crf(lstm(300,bilstm(300)) + dropout), cuddn compatible lstm | `0.98260` | `769`  | `403` | 2026-10-14 | data_v071 | 
+| [l082](#l082) | embedding (e2), crf(lstm(300,bilstm(300)) + dropout), cuddn compatible lstm | `0.98346` | `731`  | `357` | 2026-10-14 | data_v071 | 
+| [l088](#l088) | embedding (e3), crf(lstm(300,bilstm(300)) + dropout), cuddn compatible lstm | `0.98350` | `729`  | `376` | 2026-10-14 | data_v071 | 
+|      | **Transformer**                                                                        | 
+| [t010](#t010)  | [./egs/transformer](./egs/transformer) https://huggingface.co/VSSA-SDSA/LT-MLKM-modernBERT + MLP | `0.984728` | `675`  | `323` | 2026-10-14 | data_v071 | 
+
+## Embeddings
+
+| No   | Corpus  | Type | Dim | Using through | Vocab | Info | Text cleaning |
+|------|---|-|-|-|-|-|-|
+| e0   | Delfi | fasttext cbow | 150 | fasttext | 890k | training?? from Darius |
+| e1   | Delfi | fasttext cbow | 150 | finalfusion (normalized) | 890k | training?? from Darius |
+| e2   | https://huggingface.co/datasets/VSSA-SDSA/LT_AI_BLKT | fasttext cbow | 150 | finalfusion (normalized) | 2522k | [./egs/fasttext](./egs/fasttext): bucket=5000000, min_count=10, sampling=0.0001  | `Kaunas, 1934.3.27 NAŠLAITIS PABODO man šis tuščias namas Ir ilgos rūsčios dienos.` |
+| e3   | https://huggingface.co/datasets/VSSA-SDSA/LT_AI_BLKT | fasttext cbow | 150 | finalfusion (normalized) | 1701k | [./egs/fasttext](./egs/fasttext): bucket=5000000, min_count=10, sampling=0.0001  | `Kaunas , 1934 . 3 . 27 NAŠLAITIS PABODO man šis tuščias namas Ir ilgos rūsčios dienos .`
+ |
+
 
 
 
@@ -198,4 +214,94 @@ On CONLLU_24_01_30.zip test set
       6 Qg	Rgp
       6 Pgfsgn	Pgfpnn
       6 Pgfpnn	Pgfsgn
+```
+
+### l080
+Important
+
+```txt
+     23 Ncfpnn-	Ncfsgn-
+     22 Ncfsin-	Ncfsnn-
+     20 Ncfsnn-	Ncfsin-
+     17 Ncfsgn-	Ncfpnn-
+     10 Vgps-pmpnnnn-p	Vgi-----n--n--
+      9 Vgpp-sfpnnnn-p	Vgpp--npnn-n-p
+      6 Vgmp3---n--ni-	Ncmsgn-
+      6 Np---n-	Npc--n-
+      5 Pgmdnn	Mcm-vl-
+      5 Pgfsgn	Pgfpnn
+      5 Npmsgn-	Ncmsgn-
+      5 Ncfpgn-	Ncmpgn-
+      5 Agpfpnn	Agpfsgn
+      4 Vgps-sfpnnnn-p	Vgps--npnn-n-p
+      4 Vgpp-sfpnngn-p	Vgpp-pfpnnnn-p
+      4 Vgpp--npnn-n-p	Vgpp-sfpnnnn-p
+
+```
+
+### l082
+Important
+
+```txt
+     22 Ncfpnn-	Ncfsgn-
+     16 Ncfsgn-	Ncfpnn-
+     13 Ncfsnn-	Ncfsin-
+     13 Ncfsin-	Ncfsnn-
+      8 Vgps-pmpnnnn-p	Vgi-----n--n--
+      7 Vgpp-sfpnnnn-p	Vgpp--npnn-n-p
+      7 Vgi-----n--n--	Vgps-pmpnnnn-p
+      7 Agpfpnn	Agpfsgn
+      6 Np---n-	Npc--n-
+      6 Ncfpgn-	Ncmpgn-
+      5 Vgps--npnn-n-p	Vgps-sfpnnnn-p
+      5 Vgmp3---n--ni-	Ncmsgn-
+      5 Pgn--n	Cg
+      5 Pgmdnn	Mcm-vl-
+      5 Pgfsgn	Pgfpnn
+      5 Npmsgn-	Ncmsgn-
+```
+
+### l088
+Important
+
+```txt
+     24 Ncfsgn-	Ncfpnn-
+     23 Ncfpnn-	Ncfsgn-
+     21 Ncfsnn-	Ncfsin-
+     12 Ncfsin-	Ncfsnn-
+     11 Vgpp-sfpnnnn-p	Vgpp--npnn-n-p
+      9 Vgps-pmpnnnn-p	Vgi-----n--n--
+      6 Vgpp-sfpnngn-p	Vgpp-pfpnnnn-p
+      6 Vgmp3---n--ni-	Ncmsgn-
+      6 Np---n-	Npc--n-
+      6 Agpfpnn	Agpfsgn
+      5 Pgmdnn	Mcm-vl-
+      5 Npmsgn-	Ncmsgn-
+      5 Ncfpgn-	Ncmpgn-
+      4 Vgi-----n--n--	Vgps-pmpnnnn-p
+      4 Pg--nn	Qg
+      4 Pgfsgn	Pgfpnn
+```
+
+### t010
+Important
+
+```txt
+     16 Ncfsnn-	Ncfsin-
+     16 Ncfpnn-	Ncfsgn-
+     15 Ncfsgn-	Ncfpnn-
+     10 Ncfsin-	Ncfsnn-
+      7 Vgpp-sfpnnnn-p	Vgpp--npnn-n-p
+      6 Vgps-pmpnnnn-p	Vgi-----n--n--
+      6 Np---n-	Npc--n-
+      6 Agpfpnn	Agpfsgn
+      5 Vgi-----n--n--	Vgps-pmpnnnn-p
+      5 Pgmdnn	Mcm-vl-
+      5 Npmsgn-	Ncmsgn-
+      5 Agpmpnn	Agpmpvn
+      4 Vgpp--npnn-n-p	Vgpp-sfpnnnn-p
+      4 Npmsnn-	Ncmsnn-
+      4 Npfsnn-	Ncfsnn-
+      4 Ncmpgn-	Vgpp-pmpnygn-p
+
 ```
